@@ -1,0 +1,1626 @@
+   #[1]OS/2 Museum » Feed [2]OS/2 Museum » Comments Feed [3]OS/2 Museum »
+   A Brief History of Unreal Mode Comments Feed [4]alternate [5]alternate
+   [6]alternate
+
+   [7]OS/2 Museum
+   OS/2, vintage PC computing, and random musings
+   [8]Skip to content
+     * [9]Home
+     * [10]About
+          + [11]Wanted List
+     * [12]OS/2 History
+          + [13]OS/2 Beginnings
+          + [14]OS/2 1.0
+          + [15]OS/2 1.1
+          + [16]OS/2 1.2 and 1.3
+          + [17]OS/2 16-bit Server
+          + [18]OS/2 2.0
+          + [19]OS/2 2.1 and 2.11
+          + [20]OS/2 Warp
+          + [21]OS/2 Warp, PowerPC Edition
+          + [22]OS/2 Warp 4
+          + [23]OS/2 Timeline
+          + [24]OS/2 Library
+               o [25]OS/2 1.x SDK
+               o [26]OS/2 1.x Programming
+               o [27]OS/2 2.0 Technical Library
+          + [28]OS/2 Videos, 1987
+     * [29]DOS History
+          + [30]DOS Beginnings
+          + [31]DOS 1.0 and 1.1
+          + [32]DOS 2.0 and 2.1
+          + [33]DOS 3.0, 3.1, and 3.2
+          + [34]DOS 3.3
+          + [35]DOS 4.0
+          + [36]DOS Library
+     * [37]NetWare History
+          + [38]NetWare Timeline
+          + [39]NetWare Library
+     * [40]Windows History
+          + [41]Windows Library
+     * [42]PC UNIX History
+          + [43]Solaris 2.1 for x86
+
+   [44]<- USB 0.9
+   [45]ANOMALY: meaningless REX prefix used ->
+
+A Brief History of Unreal Mode
+
+   Posted on [46]June 15, 2018 by [47]Michal Necasek
+
+   After a run-in with a particularly crazy manifestation of unreal mode
+   (Flat Assembler, or [48]fasm), I decided to dig deeper into the history
+   of this undocumented yet very widely used feature of 32-bit x86
+   processors.
+
+   For the purposes of this discussion, unreal mode is a variant of the
+   x86 real mode with non-standard segment limits and/or attributes,
+   different from the processor state at reset. To recap, real mode on the
+   286 and later CPUs has much more in common with protected mode than
+   with the real (and only) mode of the 8086. Notably, undefined opcodes
+   raise exceptions, segment limit overruns cause general protection or
+   stack faults, and (on the 386 and later) 32-bit registers and 32-bit
+   addressing can be used--subject to limit checks.
+
+   The origins of unreal mode are shrouded in the mists of time. But
+   enough is known that certain outlines are quite clearly defined. Let's
+   present a rough timeline of unreal mode.
+     * 1985--the Intel 386 became available in silicon. Like the 286, the
+       386 was not designed to switch from protected back to real mode.
+       Intel's idea was presumably that users should either leave the 386
+       in real mode, reset the CPU to get back to it (like a 286), or use
+       the 386's new V86 mode. This may sound like a crazy claim, but it's
+       not. In the October 15, 1991 issue of PC Magazine, page 436
+       ("Stepping Up"), Jeff Prosise [49]wrote quite clearly: "The very
+       first 80386 chips that rolled off the line (A-step chips) could not
+       be switched from protected to real mode." Indeed the confidential
+       Intel iAPX 386 Architecture Specification, revision 1.8 from June
+       1985, had only this to say on the subject of switching from
+       protected back to real mode: "Disabling protection by loading a 0
+       into the PE bit in CR0 (assuming the current value is 1) will have
+       unpredictable effects." In other words, the original 386 design
+       tracked the 286: in real mode, segment limits and attributes retain
+       their initial reset values and cannot be changed.
+     * 1985?--someone or someones (Microsoft? Compaq?) convinced Intel to
+       relent and allow switching from protected to real mode by clearing
+       the PE bit in control register CR0; this was no doubt inspired by
+       the headaches the 286 was causing. It is unclear if there was
+       actual silicon change or only a documentation change. While a
+       transition to V86 mode always carefully loads all segment
+       registers, making any funny business impossible, the act of
+       clearing the PE bit in CR0 does almost nothing. It affects future
+       segment register loads in real mode, it affects interrupt and
+       exception dispatching, but it has near zero impact on the immediate
+       CPU state. Crucially, it does not change the current segment limits
+       or attributes, which allows the currently executing code to
+       continue running. Note that the I/O Permission Bitmap (applicable
+       in protected mode) was an even later addition to the 386 design.
+     * October 1985--The 386 datasheet (80386 High Performance
+       Microprocessor with Integrated Memory Management, Intel order no.
+       231630-001), says in section 2.3.5: "In Real Address Mode, only the
+       base address is updated directly (by shifting the selector value
+       four bits to the left) [when loading segment registers], since the
+       segment maximum limit and attributes are fixed in Real Mode." In
+       section 2.3.4, the document says: "In Real Address Mode, the
+       maximum segment size is fixed at 64 Kbytes." In other words, this
+       document both explains why unreal mode works and claims that it
+       does not exist. The datasheet also declares in section 2.3.6 that
+       switching back to real mode is possible, but no additional detail
+       is given: "If PE [bit in CR0 register] is reset, the processor
+       operates again in Real Mode. PE may be set by loading MSW or CR0.
+       PE can be reset only by a load into CR0."
+     * January 8, 1986--Intel writes a confidential memo titled Returning
+       to real mode on the 80386. This memo explains not only how to set
+       up a canonical real-mode environment on return from real mode, but
+       also why it is necessary: "While operating in REAL mode, the 80386
+       uses exactly the same memory management functions as in protected
+       mode. However, when the part resets into real mode the values
+       loaded into the descriptors appear as if they were 8086 style
+       segments. In real mode, when a segment register is loaded, only the
+       base field is changed, in particular the value placed into the base
+       is selector*16. Since only the base is changed, it is necessary to
+       set the access rights while still in protected mode." The memo
+       proceeds to explain the required segment attribute setup,
+       information which appeared in the official 1986 PRM (Programmer's
+       Reference Manual) for the 80386. What the memo also says, and the
+       PRM does not, is that the code segment (CS) cannot be made writable
+       in protected mode, but "an architectural feature reloads real mode
+       attributes into the CS descriptor during real mode far jumps". This
+       memo explains real-mode operation of the 386 far better than the
+       official documentation, and serves unreal mode on a silver platter
+       to anyone willing to experiment even just a little.
+     * April 1986--The updated 386 datasheet, Intel order no. 231630-002,
+       offers a tantalizing hint of unreal mode in section 2.3.6:
+       "Resetting the PE bit [in CR0] is typically part of a longer
+       instruction sequence needed for proper transition from Protected
+       Mode to Real Mode." The quoted text was not present in the original
+       October 1985 edition of the datasheet, and presumably refers to the
+       information first published in the Jan '86 memo.
+     * 1986--The 1986 Intel 80386 Programmer's Reference Manual says that
+       to switch from protected to real mode, the programmer must among
+       other things transfer control to a code segment with 64K limit, and
+       load SS, DS, ES, FS, and GS segment registers with selectors that
+       have a 64K limit, are byte granular, expand-up, writable, and
+       present. Only then can CR0.PE be cleared. In other words, Intel was
+       practically begging programmers to see what happens when they don't
+       do that. The PRM publishes the how-to information from the Jan '86
+       memo, but none of the background explanation.
+     * 1987--In the 1987 edition of the 80386 System Software Writer's
+       Guide (Intel order no. 231499-001), in section 9.2 on page 9-3 (4th
+       para), Intel hints: "Because, except for base address, descriptor
+       register values cannot be loaded in real mode, 8086-compatible
+       attributes must be loaded into the data segment descriptor
+       registers before switching to real mode."
+     * January 15, 1988--Phoenix 386 BIOS with this date employs unreal
+       mode to emulate some aspects of the 286 LOADALL instruction, by
+       returning to real mode with segment bases not corresponding to the
+       segment register value. The date is tentative; this was the oldest
+       386 BIOS using this technique available for analysis. More below.
+     * August 4, 1988--Microsoft adds 386 "Big Mode" or "Real Big Mode"
+       code to implement 386 extended memory moves in HIMEM.SYS 2.04.
+       Microsoft's method is quite clever, using an exception handler to
+       recover from anyone resetting the segment limits behind HIMEM's
+       back. Extended memory copying can thus be run with interrupts
+       enabled, with no impact on interrupt latency (that was a
+       significant problem on 286 CPUs). The term "unreal mode" is not
+       used. This change can be dated exactly, thanks to comments in
+       HIMEM.ASM. At the same time, LOADALL support was added to the HIMEM
+       286 extended memory move.
+     * August 15, 1988--Microsoft makes an archive of the HIMEM.SYS 2.04
+       source code, with LOADALL usage removed but unreal mode code left
+       in place. It is unclear how widely this code was distributed at the
+       time. In 1992, the source archive from 1988 was published on
+       Softlib as part of [50]XMS.EXE, which contains the new XMS 3.0
+       specification. In the late 1980s and early 1990s, Microsoft
+       published the HIMEM.SYS source code together with the XMS 2.0
+       specification (the first published version was 2.01, before the
+       unreal mode code was added).
+     * February 7, 1989--Microsoft [51]publishes HIMEM.SYS version 2.06
+       source code as XMS20.ARC; unlike the previous release, this one
+       produces an exact match of the official binary, because the source
+       code includes 386 Real Big Mode and 286 LOADALL (yes, really!)
+       support.
+     * March 21, 1989--Microsoft publishes an updated HIMEM.SYS version
+       2.06 source archive as S12023.EXE, formerly XMS20.ARC. This one
+       [52]survived to the present. Although the 1989 source code releases
+       were public, they seem to have gone more or less completely
+       unnoticed.
+     * 1989--In the 386 SX Microprocessor Programmer's Reference
+       Manual (order no. 140331-001), section 14.5 (Switching Back to
+       Real-Address Mode), Intel drops another big hint. To the paragraph
+       describing how to load segment registers when transitioning from
+       protected back to real mode, the following sentence is added: "Note
+       that if the segment registers are not reloaded, execution continues
+       using the descriptors loaded during protected mode." The same text
+       is also added to the updated 1990 edition of the 386 DX PRM, and
+       appears in the 1990 i486 PRM and all subsequent Intel programming
+       manuals.
+     * November 1989--In the November/December issue of Programmer's
+       Journal, Thomas Roden (a software engineer at AST Research, one of
+       the big PC OEMs) publishes an article titled Four Gigabytes in Real
+       Mode (page 89). This is the oldest known public description of
+       unreal mode, although the term "unreal mode" is never used. Unreal
+       mode is described, including the exception handler technique to
+       handle other code resetting the segment limits. Thanks to his
+       position at AST Research, Mr. Roden was already able to confirm
+       that unreal mode works not only on the 386DX and SX, but also on
+       the then-brand-new Intel 80486. The article mentions that it may be
+       possible to set the D-bit of the code segment to run in real mode
+       with 32-bit CS. There is no explicit mention or even a hint that
+       Mr. Roden was aware that HIMEM.SYS was already using unreal mode.
+     * January 1990--In the German c't magazine, Harald Albrecht publishes
+       an article titled Grenzenlos: Vier Gigabyte im Real Mode des 80386
+       adressieren (Boundless: Addressing four gigabytes in 80386's real
+       mode). Mr. Albrecht suggests that the 386 documentation directly
+       challenges programmers to not follow the prescribed
+       return-to-real-mode method exactly. The article is notable for
+       documenting that in real mode, a far jump partially changes CS
+       attributes, and also that after a switch to/from protected mode, a
+       near jump is sufficient to flush the prefetch queue (a far jump is
+       not necessary). Mr. Albrecht does not name the non-standard real
+       mode but presents a TSR which implements a fast INT 15h/87h block
+       move routine which uses 4GB selector limits, runs with interrupts
+       enabled, and does not disable the A20 gate when done. The author
+       incorrectly claims that (paraphrasing) no one needs the A20 gate
+       disabled, something that others learned the hard way not to be
+       true. Mr. Albrecht also notes that the segment limit extension
+       technique is unusable in V86 mode, and that 32-bit code or stack
+       segments are not practical due to corruption of the high word of
+       EIP/ESP. The article was probably written at about the same time as
+       Mr. Roden's PJ article; it may be an independent discovery,
+       although Mr. Albrecht's earlier article in the November 1989 issue
+       of c't (Odyssee im Adressraum) explicitly mentions the HIMEM.SYS
+       source code provided in Microsoft's XMS Developer's Kit.
+     * July 1990--In the July 1990 issue of Dr. Dobb's Journal, Al
+       Williams publishes an article titled DOS + 386 = 4 Gigabytes! (page
+       62), again describing unreal mode. The article is by all
+       appearances another independent discovery of unreal mode, as there
+       are no hints Mr. Williams was aware of either HIMEM.SYS or the
+       Nov/Dec '89 PJ article. Again, the term unreal mode is not used.
+     * October 1990--In the October 1990 issue of DDJ (page 12), a reader
+       letter from Thomas Roden appears, pointing out minor problems with
+       the July '90 DDJ article about unreal mode. It is clear from the
+       letter that Mr. Roden had access to an ICE (In-Circuit Emulator),
+       which no doubt greatly eased unreal mode experimentation. An
+       editor's note identifies Mr. Roden as the author of the Nov/Dec '89
+       PJ article.
+     * January 1991--On page 176 of the 1/91 issue of German DOS
+       International magazine, an article titled Vier GByte im Real Mode
+       unter MS-DOS (Four Gigabytes in Real Mode under MS-DOS) by Martin
+       Althaus explains in detail how to change segment limits to enable
+       full 4GB addressing in real mode. The necessity of enabling the A20
+       gate is discussed, and complete example code is presented; the
+       article also notes that the technique does not work when EMM386 (or
+       V86 mode in general) is in use. The article does not explore what
+       might happen if segment attributes in real mode are changed in
+       other ways, beyond setting the G bit. The author does not claim to
+       have invented the unnamed technique, but also does not give any
+       references to earlier publications.
+     * March 1991--In Chapter 18 of Assembly Language Programming for the
+       Intel 80XXX Family, William B. Giles describes in detail (page 676
+       and following) how to program 386 real-mode selectors such that
+       they cover the entire 4GB address space. Example code is also
+       presented. The [53]code samples are dated September 4, 1990. The
+       '89 PJ article is referenced as the source of information on
+       expanding real-mode selector limits.
+     * March 1991--In Chapter 18 of DOS 5: A Developer's Guide, Al
+       Williams again describes unreal mode, with code examples. Note that
+       the exact publication date is unclear; March, August, September,
+       and October 1991 are given. A [54]1992 review of the book discusses
+       Chapter 18 in some detail, together with referencing the '90 DDJ
+       and '89 PJ articles.
+     * 1991--In 80×86 Architecture & Programming Volume II: Architecture
+       Reference (page 72), Rakesh K. Agarwal (a former member of the
+       80386 design team) clearly explains what all the official Intel
+       documentation carefully doesn't: "When [switching from protected to
+       real mode] is done, the only action taken by the 80×86 is to clear
+       the PE flag. In particular, the current state of the descriptor
+       registers is left undisturbed." And further: "Such a pseudo REAL,
+       or UNREAL, execution mode can cause a REAL mode system to crash,
+       unless used very carefully" (capitalization in original). This may
+       be the first published use of the term "unreal mode".
+     * April 16, 1992--Origin releases [55]Ultima VII: The Black Gate,  a
+       game using a custom DOS extender appropriately named "Voodoo".
+       Ultima VII is a proof that unreal mode is a terrible idea for DOS
+       applications; the game requires a significant amount of free
+       conventional memory, but is incompatible with 386-based DOS
+       extenders, as well as with any DOS-compatible advanced operating
+       systems.
+     * 1992--German DOS Extra Nr. 20 (supplement of the DOS International
+       magazine) publishes the HugeRealMode driver, enabling larger than
+       64K code segments in unreal mode, with restrictions (more below).
+     * June 29, 1993--In his Tutor column starting on page 302, Jeff
+       Prosise [56]wrote a section on "accessing 4GB from real mode"
+       without using LOADALL. "Recently, another method of accessing 4GB
+       [...] was brought to my attention by a reader on PC MagNet." The
+       text gives a brief overview of unreal mode and refers to Chapter 18
+       of DOS 5: A Developer's Guide by Al Williams (also the author of
+       the 1990 DDJ article).
+     * January 1994--Chapter 8 (Extended Memory Access from Real Mode) of
+       Geoff Chappell's DOS Internals provides a very detailed description
+       of unreal mode and HIMEM's use of it. There is talk of "unreal"
+       segment properties (quotes in original, page 356), but the chapter
+       is about "real-mode Flat Memory Model", and "Big Real Mode" is also
+       gets a mention. The chapter also provides a detailed treatment of
+       286 and 386 LOADALL. It is probably the best description of the
+       inner workings of HIMEM.SYS. Curiously, in Chapter 12 (page 443)
+       Mr. Chappell grumbles that only the outdated HIMEM.SYS 2.01 source
+       code is available on CompuServe (apparently uploaded by Steve
+       Gibson of InfoWorld). Clearly, Microsoft's 1989 and 1992 HIMEM.SYS
+       source code releases did a very good job of flying under the radar
+       when they escaped Mr. Chappell's laser-like attention.
+     * September 21, 1994--IBM files patent application 309,862 titled
+       Method for expanding addressable memory range in real-mode
+       processing to facilitate loading of large programs into high
+       memory. [57]U.S. patent 5,642,491 was granted on June 24, 1997. The
+       patent describes unreal mode, and mentions Chappell's DOS
+       Internals, pages 355-385. The patent makes strange references to a
+       "64-kbyte wrapping feature associated with true 8086 real mode";
+       that might refer to stack wrapping when PUSH and POP instruction
+       are used, but no such wrapping is used for data segments. The
+       patent suggests using unreal mode during operating system
+       initialization only, not at run-time.
+     * 1993-1995--Unreal mode becomes a thing and every up-and-coming
+       programmer writes a [58]utility or [59]library to use it. It is
+       popular among demo coders, who are dismayed when [60]EMM386 use is
+       mandated for Assembly '95, interfering with unreal mode.
+     * November 11, 1994--Italian programmer Daniele Paccaloni
+       [61]publishes UNREAL.EXE, a utility to enable unreal mode on a 386
+       or later CPU, and UNREAL.DOC, a document explaining how unreal mode
+       works. In a continuation of the recurring theme, Mr. Paccaloni
+       appears to have been completely unaware of the fact that unreal
+       mode had been in use for years, or the growing body of literature
+       about it. It appears that Mr. Paccaloni also independently
+       re-invented the term "unreal mode".
+     * September 1995--Robert R. Collins writes an article (NB: The exact
+       date is uncertain, Sep '95 is a guess based on source file
+       timestamps) titled [62]Descriptor Cache Register Anomalies; this is
+       probably the definitive description of unreal mode. Mr. Collins
+       thoroughly explored the CPU behavior using LOADALL for 386 CPUs,
+       and also using SMM together with an ICE on 486, Pentium, and
+       Pentium Pro CPUs. Mr. Collins showed that real mode is much closer
+       to protected mode than one would be led to believe, and most
+       protections are in fact in place. Mr. Collins also found that CS
+       register attributes are handled differently on different CPUs
+       generations. On older processors, far jumps change the CS
+       attributes as described in the Jan '86 memo, while newer CPUs
+       preserve the CS attributes but ignore them in real mode.
+     * February 1996--In the book Protected Mode Software
+       Architecture (chapter 5, page 61), Tom Shanley purportedly
+       describes "Big Real Mode", yet makes the ridiculous claim that
+       segment offsets are still restricted to 64K (while the segment base
+       can be set to any 32-bit address before returning to real mode).
+       Perhaps this is just shows that unreal mode is not well understood,
+       despite numerous authors' attempts to explain it.
+     * September 20, 1996--Phoenix and Intel publish the POST Memory
+       Manager Specification version 1.0 (PMM specification), which
+       mandates the use of "big real mode" (aka unreal mode). Big Real
+       Mode is not explained in detail, presumably because readers already
+       know how it works. The PMM specification is later adopted by the
+       PXE and PCI firmware 3.0 standards. Intel thus manages the
+       astonishing feat of specifying and mandating the use of unreal
+       mode, while simultaneously denying that it exists. Although the
+       original 1.0 PMM specification may be lost, the touched-up [63]PMM
+       1.01 is available.
+     * August 1998--Dr. Dobb's Journal does not publish an article titled
+       [64]The Segment Descriptor Cache by Robert R. Collins. The article
+       says that "[u]nreal mode has been used commonly since it was
+       discovered on the 80386. Unreal mode is so commonly used, in fact,
+       that Intel has been forced to support this mode as part of legacy
+       80×86 behavior, though it's never been documented."
+     * August 2004--(This entry is only included for completeness.) In The
+       Unabridged Pentium 4, Tom Shanley correctly describes unreal mode,
+       saying that it "is sometimes referred to as Big Real Mode, Flat
+       Real Mode, Real Big Mode and UnReal Mode" (italics in original).
+       Unfortunately the author makes new, although minor, incorrect
+       claims, namely that CS:IP and SS:SP are always used in real mode,
+       precluding larger than 64K code and stack segments. Larger than 64K
+       code and stack segments are indeed in practice unusable in unreal
+       mode, but for different reasons.
+
+But... Is Unreal Mode Any Good?
+
+   Yes and no. As a general-purpose programming technique it is unusable,
+   because it absolutely cannot function in V86 mode. Transitions to V86
+   mode always force real-mode compatible segment limits and attributes.
+   That means unreal mode cannot be used together with EMM386 or other DOS
+   memory managers utilizing V86 mode. Unreal mode also cannot be used in
+   the DOS boxes of 386 Enhanced Mode Windows 3.x, in the DOS boxes of
+   OS/2 2.x, Windows NT, or Windows 9x. That is an extremely serious
+   drawback.
+
+   The reason why the Voodoo memory manager in Origin's Ultima VII games
+   is unique is that no one else wanted to repeat the same mistake. The
+   Ultima VII: The Black Isle credits capture the situation rather well:
+   Ultima VII's Voodoo Memory Management System
+
+   On the other hand, when unreal mode can be used, it is very useful.
+   HIMEM.SYS uses unreal mode to speed up extended memory access, and
+   perhaps more importantly, preserve normal interrupt latency. Firmware
+   can and does use unreal mode for accessing memory beyond 1 MB during
+   initialization; it avoids switching between real and protected mode,
+   and in firmware there is no danger of segment limits being reset.
+
+   Basic unreal mode (data segments with up to 4G limits, as well as data
+   segments with non-standard base) has become a standard part of the x86
+   architecture.
+
+Unreal LOADALL
+
+   At least as far back as January 1988, Phoenix 386 BIOS combined two
+   undocumented favorites, using unreal mode to emulate the 286 LOADALL
+   instruction. When handling an invalid opcode fault, the BIOS checks
+   whether the faulting instruction is a 286 LOADALL (opcode 0Fh 05h); if
+   so, it examines the provided LOADALL state buffer at address 800h and
+   checks whether the segment bases for ES and/or DS are 1MB or higher. If
+   so, the BIOS builds descriptors with the appropriate bases, loads them
+   in protected mode, and returns to real mode with these "unreal" values
+   in the segment descriptor cache (segment base other than 16 times
+   segment value). The segment bases will get overwritten as soon as ES or
+   DS gets reloaded in real mode, but that is entirely consistent with
+   LOADALL behavior.
+
+   The LOADALL emulation is very limited, but it is sufficient to support
+   the [65]use of LOADALL in OS/2, and possibly others.
+
+   The detailed history of this method is unclear. What's known is that
+   the first 386 BIOS, shipped with the Compaq DeskPro 386 in 1986, did
+   not use unreal mode. Compaq was clearly on good terms with Intel and
+   got the secret memo describing the 386 LOADALL instruction. The Compaq
+   386 BIOS emulated 286 LOADALL rather accurately using the 386 LOADALL
+   instruction, going at least as far back as September 1986 and
+   continuing to use the same method at least until 1989 (it would no
+   longer work on a 486 CPU).
+
+   IBM's PS/2 Model 80 BIOS did not emulate LOADALL at all, and is
+   therefore uninteresting.
+
+   There are also known to have been more or less no-name 386 systems sold
+   around 1987 which used effectively a 286 BIOS and had no provisions to
+   emulate LOADALL, nor did they use 386 instructions at all.
+
+   It is unknown when Phoenix first introduced unreal mode usage to
+   emulate LOADALL, or if other vendors did that before Phoenix. Clone 386
+   BIOS images from before 1988 are rather difficult to find.
+
+Unreal Mode Compatibility
+
+   Basic unreal mode with extended DS, ES, FS, and/or GS segment limits is
+   widely compatible across all 32-bit x86 CPU implementations. After all
+   that's what is mandated by PMM and by extension, PXE and PCI 3.0
+   Firmware specifications, all standards created with a significant
+   involvement of Intel.
+
+   Extending data segment limits in fact causes shockingly few problems,
+   as evidenced by the fact that HIMEM.SYS does just that. On an 8086,
+   referencing a word at offset 0FFFFh causes a wrap-around and the second
+   byte is fetched from offset zero. The 286 is already incompatible with
+   this behavior, causing a #GP fault. On a 386, any attempt to address
+   beyond 64K likewise causes #GP faults, which are typically fatal.
+   Therefore, functioning software does not do it and extending the
+   segment limit has no visible impact.
+
+   Anything else gets more complicated, and interrupts are the number one
+   enemy. For example, Intel CPUs typically support non-standard data
+   segment attributes; it's possible to make DS read-only, but that won't
+   be terribly useful when running real-mode software. It is likewise
+   possible to set the segment limit smaller than 64K, but that won't make
+   16-bit software happy.
+
+   It is possible to extend the CS limit up to 4GB and use 32-bit EIP in
+   unreal mode. In practice that is not very usable because interrupts in
+   real mode only save 16-bit IP and restore it on return. The German DOS
+   Extra magazine presented a [66]hair-raising scheme to solve the
+   problem, using the CR3 register to store the high word of EIP so that
+   it could be restored on return from interrupts, but this requires
+   software to manually keep track of the high word. In practice, larger
+   than 64K code segments are unusable in unreal mode because the
+   complications very quickly outweigh any benefits unreal mode might
+   have.
+
+   It is also possible to set the D bit in CS, changing the default
+   operand size to 32-bit. This may reduce the size of unreal code if it
+   is largely 32-bit (by obviating the need for overrides). Unfortunately,
+   this again causes serious trouble with interrupts, because existing
+   16-bit code cannot run correctly with the D bit set. It is possible to
+   switch to protected mode, clear the D bit, and execute the 16-bit
+   handler every time an interrupt occurs, and in fact it's [67]exactly
+   what fasm does (or at least did in some versions), but with so much
+   mode switching and complexity, the advantages of unreal mode are
+   rapidly lost.
+
+   Similar trouble strikes when attempting to use larger than 64K stack
+   segments. It is possible, but again destroys compatibility with
+   existing 16-bit real-mode code. The complications are such that one
+   might as well use a regular DOS extender and skip all the unreal mode
+   incompatibilities.
+
+   A larger problem is that the "advanced" aspects of unreal mode may not
+   be implemented identically across CPU generations and vendors,
+   precisely because they have never been documented. It is not specified
+   anywhere exactly which segment attributes are ignored and which are
+   honored in real mode. Protected mode, on the other hand, works
+   consistently.
+
+What Does It All Mean?
+
+   Unreal mode is almost certainly an accident of history, a side effect
+   of the fact that the initial 386 design had no architected way of
+   switching from protected mode back to real mode. Once the technique
+   started being used, instead of clearly documenting how it works, Intel
+   in its typical fashion documented only certain aspects of it, such that
+   only programmers who already know about unreal mode find traces of it
+   in the official documentation.
+
+   On the other hand, Intel did leave enough hints in the public
+   documentation that unreal mode appears to have been independently
+   discovered a number of times. What is fascinating is that Microsoft
+   apparently implemented unreal mode support in HIMEM.SYS and made its
+   source code available before any literature on unreal mode was
+   published. Starting in late 1989, articles describing unreal mode were
+   written without knowing of each other, and likely without knowing of
+   Microsoft's prior published work. Reinventing wheels may be satisfying,
+   but in the end it's just not very productive.
+
+   PS: Images of 386 clone BIOSes (other than Compaq and IBM) from 1987
+   and earlier would be worth checking for LOADALL emulation and possible
+   other unreal mode use.
+
+   Feb 2021 Update: The original 231630-001 datasheet has now been
+   recovered and this post updated accordingly.
+   This entry was posted in [68]386, [69]Corrections, [70]Microsoft,
+   [71]PC history, [72]Undocumented. Bookmark the [73]permalink.
+   [74]<- USB 0.9
+   [75]ANOMALY: meaningless REX prefix used ->
+
+43 Responses to A Brief History of Unreal Mode
+
+    1. [76]Neozeed says:
+       [77]June 15, 2018 at 5:38 am
+       The PCem folks are doing a good job of getting numerous 286/386
+       BIOS running on their framework, they ought to have quite a number
+       of images.
+    2. [78]Yuhong Bao says:
+       [79]June 15, 2018 at 6:35 am
+       The fun thing is that they never changed the LMSW instruction. I
+       wonder why/
+    3. dosfan says:
+       [80]June 15, 2018 at 8:33 am
+       Good article but why were you using fasm ? What fasm is doing
+       (32-bit real mode and relocating the IVT via LIDT) is crazy as it's
+       too much effort for too little gain and too many compatibility
+       issues. I'm not sure which is crazier, that or attempting to use
+       real mode paging on the 386 (which isn't allowed on 486 or later
+       CPUs).
+    4. God says:
+       [81]June 15, 2018 at 1:59 pm
+       Love these sorts of "software archaeology" articles Michal - always
+       informative (and a pleasure) to read. However, something of a typo
+       jumped out at me:
+       >August 1998--Dr. Dobb's Journal does NOT publish an article titled
+       The Segment Descriptor Cache
+    5. Michal Necasek says:
+       [82]June 15, 2018 at 7:07 pm
+       Presumably because someone was calling it in protected mode with
+       the PM bit clear, and expected to stay in protected mode...
+    6. Michal Necasek says:
+       [83]June 15, 2018 at 7:07 pm
+       Oh, there are zillions of BIOS images out there. But 386 BIOS
+       images from 1986-87? Nada...
+    7. Michal Necasek says:
+       [84]June 15, 2018 at 7:09 pm
+       I wasn't, I think the author is certifiably insane But someone else
+       using it made me aware of certain curious behaviors.
+    8. Michal Necasek says:
+       [85]June 15, 2018 at 7:09 pm
+       It's not a typo. I could find no evidence that the article was ever
+       published in DDJ.
+    9. Richard Wells says:
+       [86]June 15, 2018 at 9:18 pm
+       Early 386 BIOSes: Don Maslin's collection of ROMs includes the AMI
+       BIOS copyright 1987. I don't believe anyone has collected the
+       Phoenix BIOS used in the 1986 ALR 386 system.
+       While an interesting collection of the history, I believe you
+       overlooked one minor article. The October 1988 issue of Doctor
+       Dobbs had an article entitled "80386 PROTECTED MODE INITIALIZATION"
+       by Neal Marguiles (Intel employee). That title is a misnomer. It
+       covers the allocation of a 4 GB address space followed by a return
+       to real mode plus some other interesting concepts.
+       [87]http://www.drdobbs.com/80386-protected-mode-initialization/1844
+       08010
+   10. Rugxulo says:
+       [88]June 16, 2018 at 1:37 am
+       Actually, latest stable FASM seems to be 1.73.04, which silently
+       omits the unreal hack, hence you basically have to always use the
+       DPMI fallback nowadays. Not exactly sure why, he didn't (AFAIR)
+       publicly mention dropping it or why, nor whether it will come back
+       (somewhat unlikely, but he was always proud of his hack). Maybe it
+       (again) conflicted with his (Linux) 64-bit hosted version hack
+       (fasm.x64). Dunno, it's very complicated!
+   11. dosfan says:
+       [89]June 16, 2018 at 2:17 am
+       A gross hack like that belongs in a technology demo, not production
+       software.
+       I'm not sure why anyone would bother with fasm in the first place ?
+       If you're writing assembly language code for DOS or Windows then
+       there's no reason not to use MASM which was *the* industry standard
+       or the highly MASM-compatible JWasm (or whatever its successor is).
+   12. [90]Yuhong Bao says:
+       [91]June 18, 2018 at 2:47 am
+       Thinking about it, I wonder if reloading the real mode CS
+       attributes was the main change that allowed switching back to real
+       mode. It is unfortunate that writable code segments did not make
+       even the 80386 BTW.
+   13. techfury90 says:
+       [92]June 18, 2018 at 3:33 am
+       Unreal mode seems to have been known to PC-98 programmers to an
+       extent as well. Oldest reference I can find is from April 1995:
+       [93]http://www.tsg.ne.jp/buho/189/tsg189.html#8086
+       Author may have discovered it independently. There may be earlier
+       examples in books and/or magazines, but I have yet to uncover them.
+       Their description of their first cited source is slightly
+       ambiguous: it's possible that they learned about unreal mode from
+       them. The stumbling block is that I cannot seem to find their name
+       for unreal mode in general. I don't think they adopted the name we
+       assigned to it, if there is even a "well-known" name.
+   14. dosfan says:
+       [94]June 18, 2018 at 5:11 am
+       Why is it referred to as "unreal mode" anyway ? That's a foolish
+       and terrible name. Considering that it is referred to as "big real
+       mode" in an Intel doc and it involves setting the big bit in the
+       segment descriptor that should be the official name (not that it
+       really matters today). Certainly "flat real mode" is reasonable
+       alternative since you have direct access to the entire flat 4GB
+       address space.
+   15. Richard Wells says:
+       [95]June 18, 2018 at 8:53 am
+       "Big real mode" suggests that existing code works exactly the same
+       except that the segments can be larger. "Unreal mode" showcases the
+       differences.
+       Those interested in a more intentional version of a similar concept
+       of accessing 32-bit memory for >64K allocations from 16-bit code
+       could look at 1980 Data General MV 8000 documentation especially
+       the section "MV/8000 C/350 Program Combinations" and the following
+       section "Anomolies."(sic) Some of the issues DG discovered were
+       similar to ones that programmers using Intel chip noticed a decade
+       later.
+   16. [96]Yuhong Bao says:
+       [97]June 18, 2018 at 11:38 am
+       In this case, the only difference is that the segment limit is
+       larger, and existing real mode code do work the same.
+   17. Michal Necasek says:
+       [98]June 18, 2018 at 3:03 pm
+       Hmm, I don't see anything about unreal mode in that article. It
+       only says that "to assure proper operation after returning to real
+       mode, the segment registers must be loaded with real mode type
+       selectors while still in protected mode", which is the official
+       Intel party line. And the sample code does exactly that.
+       I think I looked at that AMI BIOS and it's much newer than 1987.
+       It's somewhat common that the copyright message is older than the
+       BIOS date. The opposite also happens. I'm sure there had to be
+       clone BIOSes in 1986-87 but so far I've been unable to locate any.
+   18. Michal Necasek says:
+       [99]June 18, 2018 at 3:06 pm
+       I know why, It's actually automatic. The unreal mode stuff is only
+       used if the code segment is smaller than 64K. In the newer fasm
+       versions there's more code than that, so the unreal mode code path
+       doesn't get compiled in (or at least not used). For that reason
+       it's very unlikely to come back, because using > 64K unreal mode
+       code segments brings another, much nastier layer of complications.
+   19. Michal Necasek says:
+       [100]June 18, 2018 at 4:12 pm
+       That sounds quite plausible. It would be a silicon change, but a
+       very localized one, and only visible from switching from protected
+       back to real mode.
+   20. Michal Necasek says:
+       [101]June 18, 2018 at 4:18 pm
+       Unreal mode because it's real mode, but not conforming to Intel's
+       definition of real mode. "Big real mode" is descriptive but it's
+       unclear whether it covers 32-bit code segments, or code or stack
+       segments with > 64K limits. Same problem with "flat real mode". I
+       suppose you could call it "not-real" mode, or "non-protected mode",
+       but "unreal mode" is really better.
+       To be clear, at least in this article, I use the term "unreal mode"
+       to mean any non-canonical real mode usage. I don't think the terms
+       "big real mode" or "flat real mode" were used to mean anything
+       other than 4G data segment limits, but there's more to unreal mode
+       than that. For example, unreal mode would cover running with
+       segment limits smaller than 64K (just because it's useless doesn't
+       mean it can't be done).
+   21. Michal Necasek says:
+       [102]June 18, 2018 at 4:20 pm
+       "Breaking the wall", I kind of like that.
+   22. dosfan says:
+       [103]June 18, 2018 at 8:08 pm
+       Big real mode (4GB address space) is the only thing that was ever
+       useful. Changing the default bit of the code segment would break
+       everything. If anything should be called "unreal mode" it's that
+       since it's still real mode per-se (no protections) but no regular
+       16-bit real mode program would run properly.
+   23. Michal Necasek says:
+       [104]June 19, 2018 at 2:02 pm
+       The other thing that was clearly useful (as in widely utilized) was
+       64K segments with bases at or beyond 1MB. The rest is more about
+       understanding how the damn architecture actually works than about
+       having practical value.
+   24. dosfan says:
+       [105]June 19, 2018 at 8:22 pm
+       I thought that particular trick was only done via 286 LOADALL. It
+       is of limited use since interrupts have to be disabled because once
+       the segment register is reloaded the base is changed and access
+       beyond 1MB is lost. Big real mode makes that trick impractical.
+   25. Michal Necasek says:
+       [106]June 19, 2018 at 10:34 pm
+       286 LOADALL... and the emulation thereof on 386s. Just about every
+       BIOS in the late 1980s and in the 1990s does that. Disabling
+       interrupts for a short time is still much better than resetting the
+       CPU, which isn't fast. Big real mode is certainly much better, but
+       doesn't emulate 286 LOADALL.
+   26. M says:
+       [107]June 20, 2018 at 12:16 pm
+       I am wondering if the 64K wrap-around alluded to in the IBM patents
+       could be a clumsy reference to A20-behavior?
+   27. Michal Necasek says:
+       [108]June 20, 2018 at 3:33 pm
+       That would be really clumsy, but as an explanation it makes as much
+       sense as anything
+   28. M says:
+       [109]June 20, 2018 at 10:34 pm
+       @Michal: Yes - and it is inconsistent with what they write about
+       being compatible with only pmode and real-mode apps not relying on
+       the wrap-around etc. and the A20 wrap-around indeed does exist (and
+       would not be possible to emulate w paging in unreal-mode, as is
+       done in V86). But yeah, definitely clumsy
+   29. Richard Wells says:
+       [110]June 20, 2018 at 11:13 pm
+       All 16-bit segments wrap around unless concealed behind the complex
+       logic of a 16-bit huge library. Some programs depended on it;
+       sometimes, it just concealed a bug. IBM's note in the patent on
+       wrap around boils down to keeping the standard 16-bit behavior for
+       all programs except those that specifically expect the big segments
+       of unreal mode. Otherwise, a program may be caught accessing memory
+       it didn't plan to leading to interesting results.
+       [111]https://www.pcjs.org/pubs/pc/reference/microsoft/kb/Q58987/
+       shows that wrap around has nothing to do with A20.
+   30. Michal Necasek says:
+       [112]June 21, 2018 at 12:00 am
+       No, 16-bit segments do not wrap on a 286 or later (except for a
+       special case with stack pushes and pops). If you try to address
+       past the end of a segment, you get a #GP fault. The KB article
+       talks about 16-bit pointers wrapping around, which is a different
+       issue, and more likely than not avoids addressing past the end of a
+       segment.
+   31. Chris M. says:
+       [113]June 21, 2018 at 4:11 am
+       AMI used dates instead of version numbers for their HiFlex BIOS
+       cores, hence why you would see two dates on a POST screen. One was
+       the "core" date/revision, and one was the built date/revision that
+       the vendor created. I think this changed when the WinBIOS was
+       introduced, but so many vendors went running to Award after that
+       disaster that nobody really noticed when they released a new
+       revision!
+       That 1988 Phoenix core was around for a long time, that 486
+       EISA/VLB board has it despite being from 1993! (it also has the
+       stupid 16MB RAM limitation when ROM shadowing is enabled) I think
+       Dell might have used it for a long time on their custom
+       motherboards as well (later stuff was mostly Intel OEM).
+   32. Richard Wells says:
+       [114]June 22, 2018 at 11:45 pm
+       16-bit relative near jumps will be done modulo 64k. That happens
+       according to the documentation even with latest chips. There may be
+       an exception triggered but most real mode systems should wind up
+       ignoring the exception. Otherwise, code involving relative 16-bit
+       jumps would have failed since it required overflow/underflow
+       wrapping to get to the more distant parts of the segment.
+       Memory access is a bit different because Intel decided not to
+       follow the 8086 practice of turning any incorrectly aligned word
+       access into a pair of byte accesses which had a side effect of
+       handling a word that occupied both the first and last bytes of a
+       segment. Speed beat out correctly handling an edge case. Some
+       programs seemed to still work with the exception being ignored
+       because I remember 1990s reports of people finally noticing the
+       exception. (Seemed to work because who knows what was in the second
+       byte of that word.)
+   33. Michal Necasek says:
+       [115]June 24, 2018 at 2:22 pm
+       Relative jumps are signed and sign-extended, so there's normally no
+       overflow and no truncation. #GP faults are fatal, in real mode they
+       lead to hangs (the BIOS does nothing special, the
+       interrupt/exception handler will likely return but it will just
+       re-trigger the exception immediately) or visible fatal errors
+       (EMM386, QEMM, NTVDM).
+       I don't know if with the split-word access speed beat out
+       compatibility or if Intel decided that it was a quirk not worth
+       preserving. At any rate it was a well documented difference between
+       the 8086 and later CPUs; how much software it affected in practice
+       I don't know.
+   34. Pingback: [116]Michael Tsai - Blog - A Brief History of Unreal Mode
+   35. [117]Yuhong Bao says:
+       [118]July 8, 2018 at 1:00 am
+       Thinking about it, I think virtual 8086 mode was designed before
+       they officially supported switching the 80386 to real mode, right?
+   36. Michal Necasek says:
+       [119]July 8, 2018 at 11:31 am
+       Yes, definitely. And the transitions into and out of V86 mode are
+       clean, with no way to leave junk in segment registers. It's
+       apparent that Intel's idea was that with V86 mode, no one needed
+       real mode anymore. But in the absence of a V86 monitor built into
+       the BIOS(?), that wasn't so simple.
+   37. Michal Necasek says:
+       [120]July 10, 2018 at 4:16 pm
+       Found this in a 1985 IEEE Micro paper by El-Ayat and Agarwal called
+       The Intel 80386-Architecture and Implementation: "Real mode is
+       useful for initialization and for configuration of the processor
+       data structures needed to run in native 80386 protected mode. The
+       recommended method for running 8086 code is called virtual 86
+       mode." Intel's idea clearly was that real mode was for bring-up
+       only and no one would want to switch in and out. If you wanted to
+       run 8086 code, you were supposed to do that in a V86 monitor. Yet
+       another plan that did not survive first contact with reality.
+   38. Al Williams says:
+       [121]July 29, 2018 at 7:47 am
+       Nice walk down memory lane. The original DDJ article was written on
+       my Intel Inboard 386 plugged into an XT-style motherboard. This did
+       not switch A20 like a "real" PC/AT and so my original code actually
+       would only work on the Inboard but I didn't know that. Later
+       versions (like in the book) would correct that.
+       I was looking. I got an e-mail from an Italian researcher that had
+       used the technique in some scholarly paper and referenced my
+       article for some kind of SEM or spectroscopy, but I couldn't find
+       that and I don't remember the exact year.
+       In addition -- and again, I can't remember the year -- a guy at
+       Software Development cornered me to tell me how he had started a
+       company based on the mode. I think he was selling a library or
+       something. I don't think he had much success. That had to be right
+       after it published within a year or so. I think he advertised with
+       a small ad in a couple of DDJs.
+       As for Necasek's comment, my DOS Extender PROT did run all the real
+       mode code like BIOS/DOS calls in V86 mode. As far as I know, it may
+       have been the first to do that in a nontrivial way.
+   39. Michal Necasek says:
+       [122]July 31, 2018 at 4:14 pm
+       I saw the updates to your article... as I like to say, the A20 gate
+       is the most expensive bit in history. It never occurred to me but
+       of course the Inboard had to have a different A20 gate control
+       mechanism.
+       Do you remember anything about the unreal mode origins? Was that
+       something you independently discovered, or was it something that
+       was already common knowledge in certain circles?
+   40. [123]Myself says:
+       [124]August 30, 2018 at 12:09 am
+       Bummer, I only have the third edition of the i386 datasheet
+       (231630-003, Nov. 1986).
+       In page 2, there is the "update notice" which lists updated
+       paragraphs.
+       If you have the version -002, maybe there are hints about changes
+       in the paragraphs you are emphasizing.
+   41. [125]Al Williams says:
+       [126]August 30, 2018 at 5:19 pm
+       No I had been tantalized by the discussions in the Intel doc
+       warning you to set up the segment registers before switching. Like
+       you mentioned, they all but told you how to do it and then stopped
+       short. It reminded me of the old story about during prohibition
+       where you could buy a "grape block" that had a warning label:
+       Warning: Do not place in 2 quarts of water in a cool dark place for
+       3 weeks or an illegal alcoholic beverage will result."
+       I have been experimenting with protected mode programs and
+       naturally had to try it out. The lead times in the publishing
+       business at the time means I probably was writing that about the
+       time the PJ article hit the streets if not a little before.
+       Consider it took us 3 months to publish a letter to the editor! By
+       the time an article went through the snail mail, the contracts came
+       back, then the editing and typesetting with galleys in the mail. So
+       I don't remember an exact date, but I do remember being surprised
+       when the PJ article was called out. None of us had heard of it as
+       PJ was not a major competitor so we were not tracking them the way
+       we did some of the other magazines.
+   42. Michal Necasek says:
+       [127]August 31, 2018 at 10:16 am
+       Indeed there is. The -002 edition is at
+       [128]http://www.bitsavers.org/components/intel/80386/231746-001_Int
+       roduction_to_the_80386_Apr86.pdf and page 63 in the PDF (page 2 of
+       the actual datasheet) lists the changes, though with no detail.
+       Some of the relevant sections were "revised", but that's all we
+       know until the -001 edition turns up.
+   43. Michal Necasek says:
+       [129]August 31, 2018 at 12:17 pm
+       Thanks for remembering! And the grape block bit, I've not heard of
+       that. Yeah, the Intel docs were like that, daring developers to see
+       what happens if they don't follow the recipe exactly.
+       It's hard to imagine how long the publishing turnaround was was
+       back then, but that's how it was. Entirely possible that someone
+       wrote an article and someone else independently came up with the
+       same thing before it was published. It's quite likely that the
+       articles in foreign press were also independent discoveries; I dug
+       into the German archives a little but I doubt they were the only
+       ones.
+
+Leave a Reply
+
+   Your email address will not be published. Required fields are marked *
+
+   Comment *
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+
+   Name * ______________________________
+
+   Email * ______________________________
+
+   Website ______________________________
+
+   Post Comment
+
+   D
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+
+   This site uses Akismet to reduce spam. [130]Learn how your comment data
+   is processed.
+     * Archives
+          + [131]June 2022
+          + [132]May 2022
+          + [133]April 2022
+          + [134]March 2022
+          + [135]February 2022
+          + [136]January 2022
+          + [137]December 2021
+          + [138]November 2021
+          + [139]October 2021
+          + [140]September 2021
+          + [141]August 2021
+          + [142]July 2021
+          + [143]June 2021
+          + [144]May 2021
+          + [145]April 2021
+          + [146]March 2021
+          + [147]February 2021
+          + [148]January 2021
+          + [149]December 2020
+          + [150]November 2020
+          + [151]October 2020
+          + [152]September 2020
+          + [153]August 2020
+          + [154]July 2020
+          + [155]June 2020
+          + [156]May 2020
+          + [157]April 2020
+          + [158]March 2020
+          + [159]February 2020
+          + [160]January 2020
+          + [161]December 2019
+          + [162]November 2019
+          + [163]October 2019
+          + [164]September 2019
+          + [165]August 2019
+          + [166]July 2019
+          + [167]June 2019
+          + [168]May 2019
+          + [169]April 2019
+          + [170]March 2019
+          + [171]February 2019
+          + [172]January 2019
+          + [173]December 2018
+          + [174]November 2018
+          + [175]October 2018
+          + [176]August 2018
+          + [177]July 2018
+          + [178]June 2018
+          + [179]May 2018
+          + [180]April 2018
+          + [181]March 2018
+          + [182]February 2018
+          + [183]January 2018
+          + [184]December 2017
+          + [185]November 2017
+          + [186]October 2017
+          + [187]August 2017
+          + [188]July 2017
+          + [189]June 2017
+          + [190]May 2017
+          + [191]April 2017
+          + [192]March 2017
+          + [193]February 2017
+          + [194]January 2017
+          + [195]December 2016
+          + [196]November 2016
+          + [197]October 2016
+          + [198]September 2016
+          + [199]August 2016
+          + [200]July 2016
+          + [201]June 2016
+          + [202]May 2016
+          + [203]April 2016
+          + [204]March 2016
+          + [205]February 2016
+          + [206]January 2016
+          + [207]December 2015
+          + [208]November 2015
+          + [209]October 2015
+          + [210]September 2015
+          + [211]August 2015
+          + [212]July 2015
+          + [213]June 2015
+          + [214]May 2015
+          + [215]April 2015
+          + [216]March 2015
+          + [217]February 2015
+          + [218]January 2015
+          + [219]December 2014
+          + [220]November 2014
+          + [221]October 2014
+          + [222]September 2014
+          + [223]August 2014
+          + [224]July 2014
+          + [225]June 2014
+          + [226]May 2014
+          + [227]April 2014
+          + [228]March 2014
+          + [229]February 2014
+          + [230]January 2014
+          + [231]December 2013
+          + [232]November 2013
+          + [233]October 2013
+          + [234]September 2013
+          + [235]August 2013
+          + [236]July 2013
+          + [237]June 2013
+          + [238]May 2013
+          + [239]April 2013
+          + [240]March 2013
+          + [241]February 2013
+          + [242]January 2013
+          + [243]December 2012
+          + [244]November 2012
+          + [245]October 2012
+          + [246]September 2012
+          + [247]August 2012
+          + [248]July 2012
+          + [249]June 2012
+          + [250]May 2012
+          + [251]April 2012
+          + [252]March 2012
+          + [253]February 2012
+          + [254]January 2012
+          + [255]December 2011
+          + [256]November 2011
+          + [257]October 2011
+          + [258]September 2011
+          + [259]August 2011
+          + [260]July 2011
+          + [261]June 2011
+          + [262]May 2011
+          + [263]April 2011
+          + [264]March 2011
+          + [265]January 2011
+          + [266]November 2010
+          + [267]October 2010
+          + [268]August 2010
+          + [269]July 2010
+
+     * Categories
+          + [270]286
+          + [271]386
+          + [272]3Com
+          + [273]3Dfx
+          + [274]486
+          + [275]8086/8088
+          + [276]Adaptec
+          + [277]AGP
+          + [278]AMD
+          + [279]AMD64
+          + [280]Apple
+          + [281]Archiving
+          + [282]Assembler
+          + [283]ATi
+          + [284]BIOS
+          + [285]Books
+          + [286]Borland
+          + [287]BSD
+          + [288]Bugs
+          + [289]BusLogic
+          + [290]C
+          + [291]C&T
+          + [292]CD-ROM
+          + [293]Cirrus Logic
+          + [294]CompactFlash
+          + [295]Compaq
+          + [296]Compression
+          + [297]Conner
+          + [298]Corrections
+          + [299]CP/M
+          + [300]Creative Labs
+          + [301]Crystal Semi
+          + [302]Cyrix
+          + [303]DDR RAM
+          + [304]Debugging
+          + [305]DEC
+          + [306]Development
+          + [307]Digital Research
+          + [308]Documentation
+          + [309]DOS
+          + [310]DOS Extenders
+          + [311]Dream
+          + [312]E-mu
+          + [313]Editors
+          + [314]EISA
+          + [315]Ensoniq
+          + [316]ESDI
+          + [317]Ethernet
+          + [318]Fakes
+          + [319]Fixes
+          + [320]Floppies
+          + [321]Graphics
+          + [322]Hardware Hacks
+          + [323]I18N
+          + [324]IBM
+          + [325]IDE
+          + [326]Intel
+          + [327]Internet
+          + [328]Keyboard
+          + [329]Kryoflux
+          + [330]Kurzweil
+          + [331]LAN Manager
+          + [332]Legal
+          + [333]Linux
+          + [334]MCA
+          + [335]Microsoft
+          + [336]MIDI
+          + [337]NetWare
+          + [338]Networking
+          + [339]NeXTSTEP
+          + [340]NFS
+          + [341]Novell
+          + [342]NT
+          + [343]OS X
+          + [344]OS/2
+          + [345]PC architecture
+          + [346]PC hardware
+          + [347]PC history
+          + [348]PC press
+          + [349]PCI
+          + [350]PCMCIA
+          + [351]Pentium
+          + [352]Pentium 4
+          + [353]Pentium II
+          + [354]Pentium III
+          + [355]Pentium Pro
+          + [356]Plug and Play
+          + [357]PowerPC
+          + [358]Pre-release
+          + [359]PS/2
+          + [360]QNX
+          + [361]Quantum
+          + [362]Random Thoughts
+          + [363]RDRAM
+          + [364]Roland
+          + [365]Ryzen
+          + [366]S3
+          + [367]SCO
+          + [368]SCSI
+          + [369]Seagate
+          + [370]Security
+          + [371]Site Management
+          + [372]SMP
+          + [373]Software Hacks
+          + [374]Solaris
+          + [375]Sound
+          + [376]Sound Blaster
+          + [377]Source code
+          + [378]Standards
+          + [379]Storage
+          + [380]Supermicro
+          + [381]TCP/IP
+          + [382]ThinkPad
+          + [383]Trident
+          + [384]UltraSound
+          + [385]Uncategorized
+          + [386]Undocumented
+          + [387]UNIX
+          + [388]UnixWare
+          + [389]USB
+          + [390]VGA
+          + [391]VirtualBox
+          + [392]Virtualization
+          + [393]VLB
+          + [394]Watcom
+          + [395]Wave Blaster
+          + [396]Western Digital
+          + [397]Windows
+          + [398]Windows 95
+          + [399]Windows XP
+          + [400]Wireless
+          + [401]WordStar
+          + [402]x86
+          + [403]Xenix
+          + [404]Xeon
+          + [405]Yamaha
+
+   [406]OS/2 Museum
+   [407]Proudly powered by WordPress.
+
+References
+
+   Visible links:
+   1. http://www.os2museum.com/wp/feed/
+   2. http://www.os2museum.com/wp/comments/feed/
+   3. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/feed/
+   4. http://www.os2museum.com/wp/wp-json/wp/v2/posts/4169
+   5. http://www.os2museum.com/wp/wp-json/oembed/1.0/embed?url=http%3A%2F%2Fwww.os2museum.com%2Fwp%2Fa-brief-history-of-unreal-mode%2F
+   6. http://www.os2museum.com/wp/wp-json/oembed/1.0/embed?url=http%3A%2F%2Fwww.os2museum.com%2Fwp%2Fa-brief-history-of-unreal-mode%2F&format=xml
+   7. http://www.os2museum.com/wp/
+   8. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#content
+   9. http://www.os2museum.com/wp/
+  10. http://www.os2museum.com/wp/about/
+  11. http://www.os2museum.com/wp/about/wanted-list/
+  12. http://www.os2museum.com/wp/os2-history/
+  13. http://www.os2museum.com/wp/os2-history/os2-beginnings/
+  14. http://www.os2museum.com/wp/os2-history/os2-1-0/
+  15. http://www.os2museum.com/wp/os2-history/os2-1-1/
+  16. http://www.os2museum.com/wp/os2-history/os2-1-2-and-1-3/
+  17. http://www.os2museum.com/wp/os2-history/os2-16-bit-server/
+  18. http://www.os2museum.com/wp/os2-history/os2-2-0/
+  19. http://www.os2museum.com/wp/os2-history/os2-2-1-and-2-11/
+  20. http://www.os2museum.com/wp/os2-history/os2-warp/
+  21. http://www.os2museum.com/wp/os2-history/os2-warp-powerpc-edition/
+  22. http://www.os2museum.com/wp/os2-history/os2-warp-4/
+  23. http://www.os2museum.com/wp/os2-history/os2-timeline/
+  24. http://www.os2museum.com/wp/os2-history/os2-library/
+  25. http://www.os2museum.com/wp/os2-history/os2-library/os2-1-x-sdk/
+  26. http://www.os2museum.com/wp/os2-history/os2-library/os2-1-x-programming/
+  27. http://www.os2museum.com/wp/os2-history/os2-library/os2-2-0-technical-library/
+  28. http://www.os2museum.com/wp/os2-history/os2-videos-1987/
+  29. http://www.os2museum.com/wp/dos/
+  30. http://www.os2museum.com/wp/dos/dos-beginnings/
+  31. http://www.os2museum.com/wp/dos/dos-1-0-and-1-1/
+  32. http://www.os2museum.com/wp/dos/dos-2-0-and-2-1/
+  33. http://www.os2museum.com/wp/dos/dos-3-0-3-2/
+  34. http://www.os2museum.com/wp/dos/dos-3-3/
+  35. http://www.os2museum.com/wp/dos/dos-4-0/
+  36. http://www.os2museum.com/wp/dos/dos-library/
+  37. http://www.os2museum.com/wp/netware-history/
+  38. http://www.os2museum.com/wp/netware-history/netware-timeline/
+  39. http://www.os2museum.com/wp/netware-history/netware-library/
+  40. http://www.os2museum.com/wp/windows-history/
+  41. http://www.os2museum.com/wp/windows-history/windows-library/
+  42. http://www.os2museum.com/wp/pc-unix-history/
+  43. http://www.os2museum.com/wp/pc-unix-history/solaris-2-1-for-x86/
+  44. http://www.os2museum.com/wp/usb-0-9/
+  45. http://www.os2museum.com/wp/anomaly-meaningless-rex-prefix-used/
+  46. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/
+  47. http://www.os2museum.com/wp/author/michaln/
+  48. https://en.wikipedia.org/wiki/FASM
+  49. https://books.google.de/books?id=tSLe3yMjc-AC&lpg=PP1&pg=PT437#v=onepage&q&f=false
+  50. http://www.gaby.de/ftp/pub/win3x/archive/softlib/xms.exe
+  51. http://www.megalextoria.com/usenet-archive/news095f1/b118/comp/binaries/ibm/pc/d/00002158.html
+  52. https://archives.scovetta.com/pub/power_programming/MICROSFT/
+  53. https://vetusware.com/download/Assembly%20Language%20Programming%20for%20the%20Intel%2080XXX%20Family%201/?id=15869
+  54. https://link.springer.com/content/pdf/10.3758/BF03203592.pdf
+  55. https://en.wikipedia.org/wiki/Ultima_VII:_The_Black_Gate
+  56. https://books.google.com/books?id=gCfzPMoPJWgC&pg=PA304&lpg=PA304&source=bl&ots=rnelM7Nq98&sig=NwfNst9V6yPrUqTMu4oSayD2594&hl=en&sa=X&ved=0ahUKEwinjISbjKjbAhXQZ1AKHfF3D3UQ6AEIPDAC#v=onepage&f=false
+  57. https://patents.google.com/patent/US5642491
+  58. http://ftp.lanet.lv/ftp/mirror/x2ftp/msdos/programming/memory/
+  59. http://ftp.lanet.lv/ftp/mirror/x2ftp/msdos/programming/libs/
+  60. http://dgi_il.tripod.com/gemmis.txt
+  61. https://ftp.sunet.se/mirror/archive/ftp.sunet.se/pub/simtelnet/msdos/asmutl/unreal10.zip
+  62. http://www.rcollins.org/Productivity/DescriptorCache.html
+  63. https://web.archive.org/web/20051111084304/http://www.phoenix.com/NR/rdonlyres/873A00CF-33AC-4775-B77E-08E7B9754993/0/specspmm101.pdf
+  64. http://www.rcollins.org/ddj/Aug98/Aug98.html
+  65. http://www.os2museum.com/wp/more-on-loadall-and-os2/
+  66. http://www.delorie.com/djgpp/doc/rbinter/it/91/37.html
+  67. https://board.flatassembler.net/topic.php?t=11940
+  68. http://www.os2museum.com/wp/category/386/
+  69. http://www.os2museum.com/wp/category/corrections/
+  70. http://www.os2museum.com/wp/category/microsoft/
+  71. http://www.os2museum.com/wp/category/pc-history/
+  72. http://www.os2museum.com/wp/category/undocumented/
+  73. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/
+  74. http://www.os2museum.com/wp/usb-0-9/
+  75. http://www.os2museum.com/wp/anomaly-meaningless-rex-prefix-used/
+  76. http://virtuallyfun.com/
+  77. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347786
+  78. https://yuhongbao.blogspot.com/
+  79. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347787
+  80. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347790
+  81. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347796
+  82. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347801
+  83. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347802
+  84. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347803
+  85. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347804
+  86. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347808
+  87. http://www.drdobbs.com/80386-protected-mode-initialization/184408010
+  88. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347810
+  89. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347812
+  90. https://yuhongbao.blogspot.com/
+  91. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347858
+  92. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347860
+  93. http://www.tsg.ne.jp/buho/189/tsg189.html#8086
+  94. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347861
+  95. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347862
+  96. https://yuhongbao.blogspot.com/
+  97. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347864
+  98. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347865
+  99. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347866
+ 100. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347867
+ 101. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347868
+ 102. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347869
+ 103. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347872
+ 104. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347964
+ 105. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347974
+ 106. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347978
+ 107. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-347996
+ 108. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348003
+ 109. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348035
+ 110. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348037
+ 111. https://www.pcjs.org/pubs/pc/reference/microsoft/kb/Q58987/
+ 112. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348040
+ 113. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348048
+ 114. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348117
+ 115. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348188
+ 116. https://mjtsai.com/blog/2018/07/03/a-brief-history-of-unreal-mode/
+ 117. https://yuhongbao.blogspot.com/
+ 118. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348565
+ 119. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348575
+ 120. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348630
+ 121. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-348979
+ 122. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-349002
+ 123. http://temlib.org/
+ 124. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-349848
+ 125. http://www.awce.com/
+ 126. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-349870
+ 127. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-349883
+ 128. http://www.bitsavers.org/components/intel/80386/231746-001_Introduction_to_the_80386_Apr86.pdf
+ 129. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/#comment-349890
+ 130. https://akismet.com/privacy/
+ 131. http://www.os2museum.com/wp/2022/06/
+ 132. http://www.os2museum.com/wp/2022/05/
+ 133. http://www.os2museum.com/wp/2022/04/
+ 134. http://www.os2museum.com/wp/2022/03/
+ 135. http://www.os2museum.com/wp/2022/02/
+ 136. http://www.os2museum.com/wp/2022/01/
+ 137. http://www.os2museum.com/wp/2021/12/
+ 138. http://www.os2museum.com/wp/2021/11/
+ 139. http://www.os2museum.com/wp/2021/10/
+ 140. http://www.os2museum.com/wp/2021/09/
+ 141. http://www.os2museum.com/wp/2021/08/
+ 142. http://www.os2museum.com/wp/2021/07/
+ 143. http://www.os2museum.com/wp/2021/06/
+ 144. http://www.os2museum.com/wp/2021/05/
+ 145. http://www.os2museum.com/wp/2021/04/
+ 146. http://www.os2museum.com/wp/2021/03/
+ 147. http://www.os2museum.com/wp/2021/02/
+ 148. http://www.os2museum.com/wp/2021/01/
+ 149. http://www.os2museum.com/wp/2020/12/
+ 150. http://www.os2museum.com/wp/2020/11/
+ 151. http://www.os2museum.com/wp/2020/10/
+ 152. http://www.os2museum.com/wp/2020/09/
+ 153. http://www.os2museum.com/wp/2020/08/
+ 154. http://www.os2museum.com/wp/2020/07/
+ 155. http://www.os2museum.com/wp/2020/06/
+ 156. http://www.os2museum.com/wp/2020/05/
+ 157. http://www.os2museum.com/wp/2020/04/
+ 158. http://www.os2museum.com/wp/2020/03/
+ 159. http://www.os2museum.com/wp/2020/02/
+ 160. http://www.os2museum.com/wp/2020/01/
+ 161. http://www.os2museum.com/wp/2019/12/
+ 162. http://www.os2museum.com/wp/2019/11/
+ 163. http://www.os2museum.com/wp/2019/10/
+ 164. http://www.os2museum.com/wp/2019/09/
+ 165. http://www.os2museum.com/wp/2019/08/
+ 166. http://www.os2museum.com/wp/2019/07/
+ 167. http://www.os2museum.com/wp/2019/06/
+ 168. http://www.os2museum.com/wp/2019/05/
+ 169. http://www.os2museum.com/wp/2019/04/
+ 170. http://www.os2museum.com/wp/2019/03/
+ 171. http://www.os2museum.com/wp/2019/02/
+ 172. http://www.os2museum.com/wp/2019/01/
+ 173. http://www.os2museum.com/wp/2018/12/
+ 174. http://www.os2museum.com/wp/2018/11/
+ 175. http://www.os2museum.com/wp/2018/10/
+ 176. http://www.os2museum.com/wp/2018/08/
+ 177. http://www.os2museum.com/wp/2018/07/
+ 178. http://www.os2museum.com/wp/2018/06/
+ 179. http://www.os2museum.com/wp/2018/05/
+ 180. http://www.os2museum.com/wp/2018/04/
+ 181. http://www.os2museum.com/wp/2018/03/
+ 182. http://www.os2museum.com/wp/2018/02/
+ 183. http://www.os2museum.com/wp/2018/01/
+ 184. http://www.os2museum.com/wp/2017/12/
+ 185. http://www.os2museum.com/wp/2017/11/
+ 186. http://www.os2museum.com/wp/2017/10/
+ 187. http://www.os2museum.com/wp/2017/08/
+ 188. http://www.os2museum.com/wp/2017/07/
+ 189. http://www.os2museum.com/wp/2017/06/
+ 190. http://www.os2museum.com/wp/2017/05/
+ 191. http://www.os2museum.com/wp/2017/04/
+ 192. http://www.os2museum.com/wp/2017/03/
+ 193. http://www.os2museum.com/wp/2017/02/
+ 194. http://www.os2museum.com/wp/2017/01/
+ 195. http://www.os2museum.com/wp/2016/12/
+ 196. http://www.os2museum.com/wp/2016/11/
+ 197. http://www.os2museum.com/wp/2016/10/
+ 198. http://www.os2museum.com/wp/2016/09/
+ 199. http://www.os2museum.com/wp/2016/08/
+ 200. http://www.os2museum.com/wp/2016/07/
+ 201. http://www.os2museum.com/wp/2016/06/
+ 202. http://www.os2museum.com/wp/2016/05/
+ 203. http://www.os2museum.com/wp/2016/04/
+ 204. http://www.os2museum.com/wp/2016/03/
+ 205. http://www.os2museum.com/wp/2016/02/
+ 206. http://www.os2museum.com/wp/2016/01/
+ 207. http://www.os2museum.com/wp/2015/12/
+ 208. http://www.os2museum.com/wp/2015/11/
+ 209. http://www.os2museum.com/wp/2015/10/
+ 210. http://www.os2museum.com/wp/2015/09/
+ 211. http://www.os2museum.com/wp/2015/08/
+ 212. http://www.os2museum.com/wp/2015/07/
+ 213. http://www.os2museum.com/wp/2015/06/
+ 214. http://www.os2museum.com/wp/2015/05/
+ 215. http://www.os2museum.com/wp/2015/04/
+ 216. http://www.os2museum.com/wp/2015/03/
+ 217. http://www.os2museum.com/wp/2015/02/
+ 218. http://www.os2museum.com/wp/2015/01/
+ 219. http://www.os2museum.com/wp/2014/12/
+ 220. http://www.os2museum.com/wp/2014/11/
+ 221. http://www.os2museum.com/wp/2014/10/
+ 222. http://www.os2museum.com/wp/2014/09/
+ 223. http://www.os2museum.com/wp/2014/08/
+ 224. http://www.os2museum.com/wp/2014/07/
+ 225. http://www.os2museum.com/wp/2014/06/
+ 226. http://www.os2museum.com/wp/2014/05/
+ 227. http://www.os2museum.com/wp/2014/04/
+ 228. http://www.os2museum.com/wp/2014/03/
+ 229. http://www.os2museum.com/wp/2014/02/
+ 230. http://www.os2museum.com/wp/2014/01/
+ 231. http://www.os2museum.com/wp/2013/12/
+ 232. http://www.os2museum.com/wp/2013/11/
+ 233. http://www.os2museum.com/wp/2013/10/
+ 234. http://www.os2museum.com/wp/2013/09/
+ 235. http://www.os2museum.com/wp/2013/08/
+ 236. http://www.os2museum.com/wp/2013/07/
+ 237. http://www.os2museum.com/wp/2013/06/
+ 238. http://www.os2museum.com/wp/2013/05/
+ 239. http://www.os2museum.com/wp/2013/04/
+ 240. http://www.os2museum.com/wp/2013/03/
+ 241. http://www.os2museum.com/wp/2013/02/
+ 242. http://www.os2museum.com/wp/2013/01/
+ 243. http://www.os2museum.com/wp/2012/12/
+ 244. http://www.os2museum.com/wp/2012/11/
+ 245. http://www.os2museum.com/wp/2012/10/
+ 246. http://www.os2museum.com/wp/2012/09/
+ 247. http://www.os2museum.com/wp/2012/08/
+ 248. http://www.os2museum.com/wp/2012/07/
+ 249. http://www.os2museum.com/wp/2012/06/
+ 250. http://www.os2museum.com/wp/2012/05/
+ 251. http://www.os2museum.com/wp/2012/04/
+ 252. http://www.os2museum.com/wp/2012/03/
+ 253. http://www.os2museum.com/wp/2012/02/
+ 254. http://www.os2museum.com/wp/2012/01/
+ 255. http://www.os2museum.com/wp/2011/12/
+ 256. http://www.os2museum.com/wp/2011/11/
+ 257. http://www.os2museum.com/wp/2011/10/
+ 258. http://www.os2museum.com/wp/2011/09/
+ 259. http://www.os2museum.com/wp/2011/08/
+ 260. http://www.os2museum.com/wp/2011/07/
+ 261. http://www.os2museum.com/wp/2011/06/
+ 262. http://www.os2museum.com/wp/2011/05/
+ 263. http://www.os2museum.com/wp/2011/04/
+ 264. http://www.os2museum.com/wp/2011/03/
+ 265. http://www.os2museum.com/wp/2011/01/
+ 266. http://www.os2museum.com/wp/2010/11/
+ 267. http://www.os2museum.com/wp/2010/10/
+ 268. http://www.os2museum.com/wp/2010/08/
+ 269. http://www.os2museum.com/wp/2010/07/
+ 270. http://www.os2museum.com/wp/category/286/
+ 271. http://www.os2museum.com/wp/category/386/
+ 272. http://www.os2museum.com/wp/category/3com/
+ 273. http://www.os2museum.com/wp/category/3dfx/
+ 274. http://www.os2museum.com/wp/category/486/
+ 275. http://www.os2museum.com/wp/category/8086-8088/
+ 276. http://www.os2museum.com/wp/category/adaptec/
+ 277. http://www.os2museum.com/wp/category/agp/
+ 278. http://www.os2museum.com/wp/category/amd/
+ 279. http://www.os2museum.com/wp/category/amd64/
+ 280. http://www.os2museum.com/wp/category/apple/
+ 281. http://www.os2museum.com/wp/category/archiving/
+ 282. http://www.os2museum.com/wp/category/assembler/
+ 283. http://www.os2museum.com/wp/category/ati/
+ 284. http://www.os2museum.com/wp/category/bios/
+ 285. http://www.os2museum.com/wp/category/books/
+ 286. http://www.os2museum.com/wp/category/borland/
+ 287. http://www.os2museum.com/wp/category/bsd/
+ 288. http://www.os2museum.com/wp/category/bugs/
+ 289. http://www.os2museum.com/wp/category/buslogic/
+ 290. http://www.os2museum.com/wp/category/c/
+ 291. http://www.os2museum.com/wp/category/ct/
+ 292. http://www.os2museum.com/wp/category/cd-rom/
+ 293. http://www.os2museum.com/wp/category/cirrus-logic/
+ 294. http://www.os2museum.com/wp/category/compactflash/
+ 295. http://www.os2museum.com/wp/category/compaq/
+ 296. http://www.os2museum.com/wp/category/compression/
+ 297. http://www.os2museum.com/wp/category/conner/
+ 298. http://www.os2museum.com/wp/category/corrections/
+ 299. http://www.os2museum.com/wp/category/cp-m/
+ 300. http://www.os2museum.com/wp/category/creative-labs/
+ 301. http://www.os2museum.com/wp/category/crystal-semi/
+ 302. http://www.os2museum.com/wp/category/cyrix/
+ 303. http://www.os2museum.com/wp/category/ddr-ram/
+ 304. http://www.os2museum.com/wp/category/debugging/
+ 305. http://www.os2museum.com/wp/category/dec/
+ 306. http://www.os2museum.com/wp/category/development/
+ 307. http://www.os2museum.com/wp/category/digital-research/
+ 308. http://www.os2museum.com/wp/category/documentation/
+ 309. http://www.os2museum.com/wp/category/dos/
+ 310. http://www.os2museum.com/wp/category/dos-extenders/
+ 311. http://www.os2museum.com/wp/category/dream/
+ 312. http://www.os2museum.com/wp/category/e-mu/
+ 313. http://www.os2museum.com/wp/category/editors/
+ 314. http://www.os2museum.com/wp/category/eisa/
+ 315. http://www.os2museum.com/wp/category/ensoniq/
+ 316. http://www.os2museum.com/wp/category/esdi/
+ 317. http://www.os2museum.com/wp/category/ethernet/
+ 318. http://www.os2museum.com/wp/category/fakes/
+ 319. http://www.os2museum.com/wp/category/fixes/
+ 320. http://www.os2museum.com/wp/category/floppies/
+ 321. http://www.os2museum.com/wp/category/graphics/
+ 322. http://www.os2museum.com/wp/category/hardware-hacks/
+ 323. http://www.os2museum.com/wp/category/i18n/
+ 324. http://www.os2museum.com/wp/category/ibm/
+ 325. http://www.os2museum.com/wp/category/ide/
+ 326. http://www.os2museum.com/wp/category/intel/
+ 327. http://www.os2museum.com/wp/category/internet/
+ 328. http://www.os2museum.com/wp/category/keyboard/
+ 329. http://www.os2museum.com/wp/category/kryoflux/
+ 330. http://www.os2museum.com/wp/category/kurzweil/
+ 331. http://www.os2museum.com/wp/category/lan-manager/
+ 332. http://www.os2museum.com/wp/category/legal/
+ 333. http://www.os2museum.com/wp/category/linux/
+ 334. http://www.os2museum.com/wp/category/mca/
+ 335. http://www.os2museum.com/wp/category/microsoft/
+ 336. http://www.os2museum.com/wp/category/midi/
+ 337. http://www.os2museum.com/wp/category/netware/
+ 338. http://www.os2museum.com/wp/category/networking/
+ 339. http://www.os2museum.com/wp/category/nextstep/
+ 340. http://www.os2museum.com/wp/category/nfs/
+ 341. http://www.os2museum.com/wp/category/novell/
+ 342. http://www.os2museum.com/wp/category/nt/
+ 343. http://www.os2museum.com/wp/category/os-x/
+ 344. http://www.os2museum.com/wp/category/os2/
+ 345. http://www.os2museum.com/wp/category/pc-architecture/
+ 346. http://www.os2museum.com/wp/category/pc-hardware/
+ 347. http://www.os2museum.com/wp/category/pc-history/
+ 348. http://www.os2museum.com/wp/category/pc-press/
+ 349. http://www.os2museum.com/wp/category/pci/
+ 350. http://www.os2museum.com/wp/category/pcmcia/
+ 351. http://www.os2museum.com/wp/category/pentium/
+ 352. http://www.os2museum.com/wp/category/pentium-4/
+ 353. http://www.os2museum.com/wp/category/pentium-ii/
+ 354. http://www.os2museum.com/wp/category/pentium-iii/
+ 355. http://www.os2museum.com/wp/category/pentium-pro/
+ 356. http://www.os2museum.com/wp/category/plug-and-play/
+ 357. http://www.os2museum.com/wp/category/powerpc/
+ 358. http://www.os2museum.com/wp/category/pre-release/
+ 359. http://www.os2museum.com/wp/category/ps2/
+ 360. http://www.os2museum.com/wp/category/qnx/
+ 361. http://www.os2museum.com/wp/category/quantum/
+ 362. http://www.os2museum.com/wp/category/random-thoughts/
+ 363. http://www.os2museum.com/wp/category/rdram/
+ 364. http://www.os2museum.com/wp/category/roland/
+ 365. http://www.os2museum.com/wp/category/ryzen/
+ 366. http://www.os2museum.com/wp/category/s3/
+ 367. http://www.os2museum.com/wp/category/sco/
+ 368. http://www.os2museum.com/wp/category/scsi/
+ 369. http://www.os2museum.com/wp/category/seagate/
+ 370. http://www.os2museum.com/wp/category/security/
+ 371. http://www.os2museum.com/wp/category/site-management/
+ 372. http://www.os2museum.com/wp/category/smp/
+ 373. http://www.os2museum.com/wp/category/software-hacks/
+ 374. http://www.os2museum.com/wp/category/solaris/
+ 375. http://www.os2museum.com/wp/category/sound/
+ 376. http://www.os2museum.com/wp/category/sound-blaster/
+ 377. http://www.os2museum.com/wp/category/source-code/
+ 378. http://www.os2museum.com/wp/category/standards/
+ 379. http://www.os2museum.com/wp/category/storage/
+ 380. http://www.os2museum.com/wp/category/supermicro/
+ 381. http://www.os2museum.com/wp/category/tcp-ip/
+ 382. http://www.os2museum.com/wp/category/thinkpad/
+ 383. http://www.os2museum.com/wp/category/trident/
+ 384. http://www.os2museum.com/wp/category/ultrasound/
+ 385. http://www.os2museum.com/wp/category/uncategorized/
+ 386. http://www.os2museum.com/wp/category/undocumented/
+ 387. http://www.os2museum.com/wp/category/unix/
+ 388. http://www.os2museum.com/wp/category/unixware/
+ 389. http://www.os2museum.com/wp/category/usb/
+ 390. http://www.os2museum.com/wp/category/vga/
+ 391. http://www.os2museum.com/wp/category/virtualbox/
+ 392. http://www.os2museum.com/wp/category/virtualization/
+ 393. http://www.os2museum.com/wp/category/vlb/
+ 394. http://www.os2museum.com/wp/category/watcom/
+ 395. http://www.os2museum.com/wp/category/wave-blaster/
+ 396. http://www.os2museum.com/wp/category/western-digital/
+ 397. http://www.os2museum.com/wp/category/windows/
+ 398. http://www.os2museum.com/wp/category/windows-95/
+ 399. http://www.os2museum.com/wp/category/windows-xp/
+ 400. http://www.os2museum.com/wp/category/wireless/
+ 401. http://www.os2museum.com/wp/category/wordstar/
+ 402. http://www.os2museum.com/wp/category/x86/
+ 403. http://www.os2museum.com/wp/category/xenix/
+ 404. http://www.os2museum.com/wp/category/xeon/
+ 405. http://www.os2museum.com/wp/category/yamaha/
+ 406. http://www.os2museum.com/wp/
+ 407. https://wordpress.org/
+
+   Hidden links:
+ 409. http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/ultima-vii-voodoo/

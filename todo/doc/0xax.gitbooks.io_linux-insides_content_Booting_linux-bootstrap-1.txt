@@ -1,0 +1,897 @@
+   #[1]next [2]prev
+
+   IFRAME:
+   [3]https://archive.org/includes/donate.php?as_page=1&platform=wb&refere
+   r=https%3A//web.archive.org/web/20230308144716/https%3A//0xax.gitbooks.
+   io/linux-insides/content/Booting/linux-bootstrap-1.html
+
+   [4]Wayback Machine
+   https://0xax.gitbook Go
+   [5]86 captures
+   01 Feb 2015 - 22 Mar 2023
+   [6]Jan              MAR  Apr
+   [7]Previous capture 08   [8]Next capture
+   [9]2022             2023 2024
+   success
+   fail
+   [10]About this capture
+   COLLECTED BY
+   Collection: [11]mega002
+   TIMESTAMPS
+   loading
+
+   The Wayback Machine -
+   https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/lin
+   ux-insides/content/Booting/linux-bootstrap-1.html
+
+   ____________________
+
+     * [12]Linux Inside
+     *
+     * Summary
+     * [13]Introduction
+     * [14]Booting
+          + [15]From bootloader to kernel
+          + [16]First steps in the kernel setup code
+          + [17]Video mode initialization and transition to protected mode
+          + [18]Transition to 64-bit mode
+          + [19]Kernel decompression
+          + [20]Kernel load address randomization
+     * [21]Initialization
+          + [22]First steps in the kernel
+          + [23]Early interrupts handler
+          + [24]Last preparations before the kernel entry point
+          + [25]Kernel entry point
+          + [26]Continue architecture-specific boot-time initializations
+          + [27]Architecture-specific initializations, again...
+          + [28]End of the architecture-specific initializations,
+            almost...
+          + [29]Scheduler initialization
+          + [30]RCU initialization
+          + [31]End of initialization
+     * [32]Interrupts
+          + [33]Introduction
+          + [34]Start to dive into interrupts
+          + [35]Interrupt handlers
+          + [36]Initialization of non-early interrupt gates
+          + [37]Implementation of some exception handlers
+          + [38]Handling Non-Maskable interrupts
+          + [39]Dive into external hardware interrupts
+          + [40]Initialization of external hardware interrupts structures
+          + [41]Softirq, Tasklets and Workqueues
+          + [42]Last part
+     * [43]System calls
+          + [44]Introduction to system calls
+          + [45]How the Linux kernel handles a system call
+          + [46]vsyscall and vDSO
+          + [47]How the Linux kernel runs a program
+          + [48]Implementation of the open system call
+          + [49]Limits on resources in Linux
+     * [50]Timers and time management
+          + [51]Introduction
+          + [52]Clocksource framework
+          + [53]The tick broadcast framework and dyntick
+          + [54]Introduction to timers
+          + [55]Clockevents framework
+          + [56]x86 related clock sources
+          + [57]Time related system calls
+     * [58]Synchronization primitives
+          + [59]Introduction to spinlocks
+          + [60]Queued spinlocks
+          + [61]Semaphores
+          + [62]Mutex
+          + [63]Reader/Writer semaphores
+          + [64]SeqLock
+          + RCU
+          + Lockdep
+     * [65]Memory management
+          + [66]Memblock
+          + [67]Fixmaps and ioremap
+          + [68]kmemcheck
+     * [69]Cgroups
+          + [70]Introduction to Control Groups
+     * SMP
+     * [71]Concepts
+          + [72]Per-CPU variables
+          + [73]Cpumasks
+          + [74]The initcall mechanism
+          + [75]Notification Chains
+     * [76]Data Structures in the Linux Kernel
+          + [77]Doubly linked list
+          + [78]Radix tree
+          + [79]Bit arrays
+     * [80]Theory
+          + [81]Paging
+          + [82]Elf64
+          + [83]Inline assembly
+          + CPUID
+          + MSR
+     * Initial ram disk
+          + initrd
+     * [84]Misc
+          + [85]Linux kernel development
+          + [86]How the kernel is compiled
+          + [87]Linkers
+          + [88]Program startup process in userspace
+          + Write and Submit your first Linux kernel Patch
+          + Data types in the kernel
+     * [89]KernelStructures
+          + [90]IDT
+     * [91]Useful links
+     * [92]Contributors
+     *
+
+   Powered by GitBook
+
+[93]From bootloader to kernel
+
+Kernel booting process. Part 1.
+
+From the bootloader to the kernel
+
+   If you read my previous [94]blog posts, you might have noticed that I
+   have been involved with low-level programming for some time. I wrote
+   some posts about assembly programming for x86_64 Linux and, at the same
+   time, started to dive into the Linux kernel source code.
+
+   I have a great interest in understanding how low-level things work, how
+   programs run on my computer, how they are located in memory, how the
+   kernel manages processes and memory, how the network stack works at a
+   low level, and many many other things. So, I decided to write yet
+   another series of posts about the Linux kernel for the x86_64
+   architecture.
+
+   Note that I'm not a professional kernel hacker and I don't write code
+   for the kernel at work. It's just a hobby. I just like low-level stuff,
+   and it is interesting for me to see how these things work. So if you
+   notice anything confusing, or if you have any questions/remarks, ping
+   me on Twitter [95]0xAX, drop me an [96]email or just create an
+   [97]issue. I appreciate it.
+
+   All posts will also be accessible at [98]github repo and, if you find
+   something wrong with my English or the post content, feel free to send
+   a pull request.
+
+   Note that this isn't official documentation, just learning and sharing
+   knowledge.
+
+   Required knowledge
+     * Understanding C code
+     * Understanding assembly code (AT&T syntax)
+
+   Anyway, if you're just starting to learn such tools, I will try to
+   explain some parts during this and the following posts. Alright, this
+   is the end of the simple introduction. Let's start to dive into the
+   Linux kernel and low-level stuff!
+
+   I started writing these posts at the time of the 3.18 Linux kernel, and
+   many things have changed since that time. If there are changes, I will
+   update the posts accordingly.
+
+The Magical Power Button, What happens next?
+
+   Although this is a series of posts about the Linux kernel, we won't
+   start directly from the kernel code. As soon as you press the magical
+   power button on your laptop or desktop computer, it starts working. The
+   motherboard sends a signal to the [99]power supply device. After
+   receiving the signal, the power supply provides the proper amount of
+   electricity to the computer. Once the motherboard receives the
+   [100]power good signal, it tries to start the CPU. The CPU resets all
+   leftover data in its registers and sets predefined values for each of
+   them.
+
+   The [101]80386 and later CPUs define the following predefined data in
+   CPU registers after the computer resets:
+IP          0xfff0
+CS selector 0xf000
+CS base     0xffff0000
+
+   The processor starts working in [102]real mode. Let's back up a little
+   and try to understand [103]memory segmentation in this mode. Real mode
+   is supported on all x86-compatible processors, from the [104]8086 CPU
+   all the way to the modern Intel 64-bit CPUs. The 8086 processor has a
+   20-bit address bus, which means that it could work with a 0-0xFFFFF or
+   1 megabyte address space. But it only has 16-bit registers, which have
+   a maximum address of 2^16 - 1 or 0xffff (64 kilobytes).
+
+   [105]Memory segmentation is used to make use of all the address space
+   available. All memory is divided into small, fixed-size segments of
+   65536 bytes (64 KB). Since we cannot address memory above 64 KB with
+   16-bit registers, an alternate method was devised.
+
+   An address consists of two parts: a segment selector, which has a base
+   address; and an offset from this base address. In real mode, the
+   associated base address of a segment selector is Segment Selector * 16.
+   Thus, to get a physical address in memory, we need to multiply the
+   segment selector part by 16 and add the offset to it:
+PhysicalAddress = Segment Selector * 16 + Offset
+
+   For example, if CS:IP is 0x2000:0x0010, then the corresponding physical
+   address will be:
+>>> hex((0x2000 << 4) + 0x0010)
+'0x20010'
+
+   But, if we take the largest segment selector and offset, 0xffff:0xffff,
+   then the resulting address will be:
+>>> hex((0xffff << 4) + 0xffff)
+'0x10ffef'
+
+   which is 65520 bytes past the first megabyte. Since only one megabyte
+   is accessible in real mode, 0x10ffef becomes 0x00ffef with the [106]A20
+   line disabled.
+
+   Ok, now we know a little bit about real mode and its memory addressing.
+   Let's get back to discussing register values after reset.
+
+   The CS register consists of two parts: the visible segment selector and
+   the hidden base address. While the base address is normally formed by
+   multiplying the segment selector value by 16, during a hardware reset
+   the segment selector in the CS register is loaded with 0xf000 and the
+   base address is loaded with 0xffff0000. The processor uses this special
+   base address until CS changes.
+
+   The starting address is formed by adding the base address to the value
+   in the EIP register:
+>>> 0xffff0000 + 0xfff0
+'0xfffffff0'
+
+   We get 0xfffffff0, which is 16 bytes below 4GB. This point is called
+   the [107]reset vector. It's the memory location at which the CPU
+   expects to find the first instruction to execute after reset. It
+   contains a [108]jump (jmp) instruction that usually points to the
+   [109]BIOS (Basic Input/Output System) entry point. For example, if we
+   look in the [110]coreboot source code (src/cpu/x86/16bit/reset16.inc),
+   we see:
+    .section ".reset", "ax", %progbits
+    .code16
+.globl    _start
+_start:
+    .byte  0xe9
+    .int   _start16bit - ( . + 2 )
+    ...
+
+   Here we can see the jmp instruction [111]opcode, which is 0xe9, and its
+   destination address at _start16bit - ( . + 2).
+
+   We also see that the reset section is 16 bytes and is compiled to start
+   from the address 0xfffffff0 (src/cpu/x86/16bit/reset16.ld):
+SECTIONS {
+    /* Trigger an error if I have an unuseable start address */
+    _bogus = ASSERT(_start16bit >= 0xffff0000, "_start16bit too low. Please repo
+rt.");
+    _ROMTOP = 0xfffffff0;
+    . = _ROMTOP;
+    .reset . : {
+        *(.reset);
+        . = 15;
+        BYTE(0x00);
+    }
+}
+
+   Now the BIOS starts. After initializing and checking the hardware, the
+   BIOS needs to find a bootable device. A boot order is stored in the
+   BIOS configuration, controlling which devices the BIOS attempts to boot
+   from. When attempting to boot from a hard drive, the BIOS tries to find
+   a boot sector. On hard drives partitioned with an [112]MBR partition
+   layout, the boot sector is stored in the first 446 bytes of the first
+   sector, where each sector is 512 bytes. The final two bytes of the
+   first sector are 0x55 and 0xaa, which designates to the BIOS that this
+   device is bootable.
+
+   For example:
+;
+; Note: this example is written in Intel Assembly syntax
+;
+[BITS 16]
+
+boot:
+    mov al, '!'
+    mov ah, 0x0e
+    mov bh, 0x00
+    mov bl, 0x07
+
+    int 0x10
+    jmp $
+
+times 510-($-$$) db 0
+
+db 0x55
+db 0xaa
+
+   Build and run this with:
+nasm -f bin boot.nasm && qemu-system-x86_64 boot
+
+   This will instruct [113]QEMU to use the boot binary that we just built
+   as a disk image. Since the binary generated by the assembly code above
+   fulfills the requirements of the boot sector (the origin is set to
+   0x7c00 and we end it with the magic sequence), QEMU will treat the
+   binary as the master boot record (MBR) of a disk image.
+
+   You will see:
+
+   Simple bootloader which prints only `!`
+
+   In this example, we can see that the code will be executed in 16-bit
+   real mode and will start at 0x7c00 in memory. After starting, it calls
+   the [114]0x10 interrupt, which just prints the ! symbol. It fills the
+   remaining 510 bytes with zeros and finishes with the two magic bytes
+   0xaa and 0x55.
+
+   You can see a binary dump of this using the objdump utility:
+nasm -f bin boot.nasm
+objdump -D -b binary -mi386 -Maddr16,data16,intel boot
+
+   A real-world boot sector has code for continuing the boot process and a
+   partition table instead of a bunch of 0's and an exclamation mark. :)
+   From this point onwards, the BIOS hands control over to the bootloader.
+
+   NOTE: As explained above, the CPU is in real mode. In real mode,
+   calculating the physical address in memory is done as follows:
+PhysicalAddress = Segment Selector * 16 + Offset
+
+   just as explained above. We have only 16-bit general purpose registers,
+   which has a maximum value of 0xffff, so if we take the largest values
+   the result will be:
+>>> hex((0xffff * 16) + 0xffff)
+'0x10ffef'
+
+   where 0x10ffef is equal to 1MB + 64KB - 16b. An [115]8086 processor
+   (which was the first processor with real mode), in contrast, has a
+   20-bit address line. Since 2^20 = 1048576 is 1MB, this means that the
+   actual available memory is 1MB.
+
+   In general, real mode's memory map is as follows:
+0x00000000 - 0x000003FF - Real Mode Interrupt Vector Table
+0x00000400 - 0x000004FF - BIOS Data Area
+0x00000500 - 0x00007BFF - Unused
+0x00007C00 - 0x00007DFF - Our Bootloader
+0x00007E00 - 0x0009FFFF - Unused
+0x000A0000 - 0x000BFFFF - Video RAM (VRAM) Memory
+0x000B0000 - 0x000B7777 - Monochrome Video Memory
+0x000B8000 - 0x000BFFFF - Color Video Memory
+0x000C0000 - 0x000C7FFF - Video ROM BIOS
+0x000C8000 - 0x000EFFFF - BIOS Shadow Area
+0x000F0000 - 0x000FFFFF - System BIOS
+
+   At the beginning of this post, I wrote that the first instruction
+   executed by the CPU is located at address 0xFFFFFFF0, which is much
+   larger than 0xFFFFF (1MB). How can the CPU access this address in real
+   mode? The answer is in the [116]coreboot documentation:
+0xFFFE_0000 - 0xFFFF_FFFF: 128 kilobyte ROM mapped into address space
+
+   At the start of execution, the BIOS is not in RAM, but in ROM.
+
+Bootloader
+
+   There are a number of bootloaders that can boot Linux, such as
+   [117]GRUB 2 and [118]syslinux. The Linux kernel has a [119]Boot
+   protocol which specifies the requirements for a bootloader to implement
+   Linux support. This example will describe GRUB 2.
+
+   Continuing from before, now that the BIOS has chosen a boot device and
+   transferred control to the boot sector code, execution starts from
+   [120]boot.img. Its code is very simple, due to the limited amount of
+   space available. It contains a pointer which is used to jump to the
+   location of GRUB 2's core image. The core image begins with
+   [121]diskboot.img, which is usually stored immediately after the first
+   sector in the unused space before the first partition. The above code
+   loads the rest of the core image, which contains GRUB 2's kernel and
+   drivers for handling filesystems, into memory. After loading the rest
+   of the core image, it executes the [122]grub_main function.
+
+   The grub_main function initializes the console, gets the base address
+   for modules, sets the root device, loads/parses the grub configuration
+   file, loads modules, etc. At the end of execution, the grub_main
+   function moves grub to normal mode. The grub_normal_execute function
+   (from the grub-core/normal/main.c source code file) completes the final
+   preparations and shows a menu to select an operating system. When we
+   select one of the grub menu entries, the grub_menu_execute_entry
+   function runs, executing the grub boot command and booting the selected
+   operating system.
+
+   As we can read in the kernel boot protocol, the bootloader must read
+   and fill some fields of the kernel setup header, which starts at offset
+   0x01f1 from the kernel setup code. You may look at the boot [123]linker
+   script to confirm the value of this offset. The kernel header
+   [124]arch/x86/boot/header.S starts from:
+    .globl hdr
+hdr:
+    setup_sects: .byte 0
+    root_flags:  .word ROOT_RDONLY
+    syssize:     .long 0
+    ram_size:    .word 0
+    vid_mode:    .word SVGA_MODE
+    root_dev:    .word 0
+    boot_flag:   .word 0xAA55
+
+   The bootloader must fill this and the rest of the headers (which are
+   only marked as being type write in the Linux boot protocol, such as in
+   [125]this example) with values either received from the command line or
+   calculated during booting. (We will not go over full descriptions and
+   explanations for all fields of the kernel setup header for now, but we
+   shall do so when discussing how the kernel uses them. You can find a
+   description of all fields in the [126]boot protocol.)
+
+   As we can see in the kernel boot protocol, memory will be mapped as
+   follows after loading the kernel:
+         | Protected-mode kernel  |
+100000   +------------------------+
+         | I/O memory hole        |
+0A0000   +------------------------+
+         | Reserved for BIOS      | Leave as much as possible unused
+         ~                        ~
+         | Command line           | (Can also be below the X+10000 mark)
+X+10000  +------------------------+
+         | Stack/heap             | For use by the kernel real-mode code.
+X+08000  +------------------------+
+         | Kernel setup           | The kernel real-mode code.
+         | Kernel boot sector     | The kernel legacy boot sector.
+       X +------------------------+
+         | Boot loader            | <- Boot sector entry point 0x7C00
+001000   +------------------------+
+         | Reserved for MBR/BIOS  |
+000800   +------------------------+
+         | Typically used by MBR  |
+000600   +------------------------+
+         | BIOS use only          |
+000000   +------------------------+
+
+   When the bootloader transfers control to the kernel, it starts at:
+X + sizeof(KernelBootSector) + 1
+
+   where X is the address of the kernel boot sector being loaded. In my
+   case, X is 0x10000, as we can see in a memory dump:
+
+   kernel first address
+
+   The bootloader has now loaded the Linux kernel into memory, filled the
+   header fields, and then jumped to the corresponding memory address. We
+   now move directly to the kernel setup code.
+
+The Beginning of the Kernel Setup Stage
+
+   Finally, we are in the kernel! Technically, the kernel hasn't run yet.
+   First, the kernel setup part must configure stuff such as the
+   decompressor and some memory management related things, to name a few.
+   After all these things are done, the kernel setup part will decompress
+   the actual kernel and jump to it. Execution of the setup part starts
+   from [127]arch/x86/boot/header.S at the [128]_start symbol.
+
+   It may look a bit strange at first sight, as there are several
+   instructions before it. A long time ago, the Linux kernel had its own
+   bootloader. Now, however, if you run, for example,
+qemu-system-x86_64 vmlinuz-3.18-generic
+
+   then you will see:
+
+   Try vmlinuz in qemu
+
+   Actually, the file header.S starts with the magic number [129]MZ (see
+   image above), the error message that displays and, following that, the
+   [130]PE header:
+#ifdef CONFIG_EFI_STUB
+# "MZ", MS-DOS header
+.byte 0x4d
+.byte 0x5a
+#endif
+...
+...
+...
+pe_header:
+    .ascii "PE"
+    .word 0
+
+   It needs this to load an operating system with [131]UEFI support. We
+   won't be looking into its inner workings right now but will cover it in
+   upcoming chapters.
+
+   The actual kernel setup entry point is:
+// header.S line 292
+.globl _start
+_start:
+
+   The bootloader (GRUB 2 and others) knows about this point (at an offset
+   of 0x200 from MZ) and jumps directly to it, despite the fact that
+   header.S starts from the .bstext section, which prints an error
+   message:
+//
+// arch/x86/boot/setup.ld
+//
+. = 0;                    // current position
+.bstext : { *(.bstext) }  // put .bstext section to position 0
+.bsdata : { *(.bsdata) }
+
+   The kernel setup entry point is:
+    .globl _start
+_start:
+    .byte  0xeb
+    .byte  start_of_setup-1f
+1:
+    //
+    // rest of the header
+    //
+
+   Here we can see a jmp instruction opcode (0xeb) that jumps to the
+   start_of_setup-1f point. In Nf notation, 2f, for example, refers to the
+   local label 2:. In our case, it's label 1: that is present right after
+   the jump, and contains the rest of the setup [132]header. Right after
+   the setup header, we see the .entrytext section, which starts at the
+   start_of_setup label.
+
+   This is the first code that actually runs (aside from the previous jump
+   instructions, of course). After the kernel setup part receives control
+   from the bootloader, the first jmp instruction is located at the 0x200
+   offset from the start of the kernel real mode, i.e., after the first
+   512 bytes. This can be seen in both the Linux kernel boot protocol and
+   the GRUB 2 source code:
+segment = grub_linux_real_target >> 4;
+state.gs = state.fs = state.es = state.ds = state.ss = segment;
+state.cs = segment + 0x20;
+
+   In my case, the kernel is loaded at the physical address 0x10000. This
+   means that segment registers have the following values after kernel
+   setup starts:
+gs = fs = es = ds = ss = 0x1000
+cs = 0x1020
+
+   After the jump to start_of_setup, the kernel needs to do the following:
+     * Make sure that all segment register values are equal
+     * Set up a correct stack, if needed
+     * Set up [133]bss
+     * Jump to the C code in [134]arch/x86/boot/main.c
+
+   Let's look at the implementation.
+
+Aligning the Segment Registers
+
+   First of all, the kernel ensures that the ds and es segment registers
+   point to the same address. Next, it clears the direction flag using the
+   cld instruction:
+    movw    %ds, %ax
+    movw    %ax, %es
+    cld
+
+   As I wrote earlier, grub2 loads kernel setup code at address 0x10000 by
+   default and cs at 0x1020 because execution doesn't start from the start
+   of the file, but from the jump here:
+_start:
+    .byte 0xeb
+    .byte start_of_setup-1f
+
+   which is at a 512 byte offset from [135]4d 5a. We also need to align cs
+   from 0x1020 to 0x1000, as well as all other segment registers. After
+   that, we set up the stack:
+    pushw   %ds
+    pushw   $6f
+    lretw
+
+   which pushes the value of ds to the stack, followed by the address of
+   the [136]6 label and executes the lretw instruction. When the lretw
+   instruction is called, it loads the address of label 6 into the
+   [137]instruction pointer register and loads cs with the value of ds.
+   Afterward, ds and cs will have the same values.
+
+Stack Setup
+
+   Almost all of the setup code is for preparing the C language
+   environment in real mode. The next [138]step is checking the ss
+   register's value and setting up a correct stack if ss is wrong:
+    movw    %ss, %dx
+    cmpw    %ax, %dx
+    movw    %sp, %dx
+    je      2f
+
+   This can lead to 3 different scenarios:
+     * ss has a valid value 0x1000 (as do all the other segment registers
+       besides cs)
+     * ss is invalid and the CAN_USE_HEAP flag is set (see below)
+     * ss is invalid and the CAN_USE_HEAP flag is not set (see below)
+
+   Let's look at all three of these scenarios in turn:
+     * ss has a correct address (0x1000). In this case, we go to label
+       [139]2:
+
+2:  andw    $~3, %dx
+    jnz     3f
+    movw    $0xfffc, %dx
+3:  movw    %ax, %ss
+    movzwl  %dx, %esp
+    sti
+
+   Here we set the alignment of dx (which contains the value of sp as
+   given by the bootloader) to 4 bytes and check if it is zero. If it is,
+   we set dx to 0xfffc (The last 4-byte aligned address in a 64KB
+   segment). If it is not zero, we continue to use the value of sp given
+   by the bootloader (0xf7f4 in my case). Afterwards, we put the value of
+   ax (0x1000) into ss. We now have a correct stack:
+
+   stack
+     * The second scenario, (ss != ds). First, we put the value of
+       [140]_end (the address of the end of the setup code) into dx and
+       check the loadflags header field using the testb instruction to see
+       whether we can use the heap. [141]loadflags is a bitmask header
+       defined as:
+
+#define LOADED_HIGH     (1<<0)
+#define QUIET_FLAG      (1<<5)
+#define KEEP_SEGMENTS   (1<<6)
+#define CAN_USE_HEAP    (1<<7)
+
+   and as we can read in the boot protocol:
+Field name: loadflags
+
+  This field is a bitmask.
+
+  Bit 7 (write): CAN_USE_HEAP
+    Set this bit to 1 to indicate that the value entered in the
+    heap_end_ptr is valid.  If this field is clear, some setup code
+    functionality will be disabled.
+
+   If the CAN_USE_HEAP bit is set, we put heap_end_ptr into dx (which
+   points to _end) and add STACK_SIZE (the minimum stack size, 1024 bytes)
+   to it. After this, if dx is not carried (it will not be carried, dx =
+   _end + 1024), jump to label 2 (as in the previous case) and make a
+   correct stack.
+
+   stack
+     * When CAN_USE_HEAP is not set, we just use a minimal stack from _end
+       to _end + STACK_SIZE:
+
+   minimal stack
+
+BSS Setup
+
+   The last two steps that need to happen before we can jump to the main C
+   code are setting up the [142]BSS area and checking the "magic"
+   signature. First, signature checking:
+    cmpl    $0x5a5aaa55, setup_sig
+    jne     setup_bad
+
+   This simply compares the [143]setup_sig with the magic number
+   0x5a5aaa55. If they are not equal, a fatal error is reported.
+
+   If the magic number matches, knowing we have a set of correct segment
+   registers and a stack, we only need to set up the BSS section before
+   jumping into the C code.
+
+   The BSS section is used to store statically allocated, uninitialized
+   data. Linux carefully ensures this area of memory is first zeroed using
+   the following code:
+    movw    $__bss_start, %di
+    movw    $_end+3, %cx
+    xorl    %eax, %eax
+    subw    %di, %cx
+    shrw    $2, %cx
+    rep; stosl
+
+   First, the [144]__bss_start address is moved into di. Next, the _end +
+   3 address (+3 - aligns to 4 bytes) is moved into cx. The eax register
+   is cleared (using the xor instruction), and the bss section size (cx -
+   di) is calculated and put into cx. Then, cx is divided by four (the
+   size of a 'word'), and the stosl instruction is used repeatedly,
+   storing the value of eax (zero) into the address pointed to by di,
+   automatically increasing di by four, repeating until cx reaches zero.
+   The net effect of this code is that zeros are written through all words
+   in memory from __bss_start to _end:
+
+   bss
+
+Jump to main
+
+   That's all! We have the stack and BSS, so we can jump to the main() C
+   function:
+    calll main
+
+   The main() function is located in [145]arch/x86/boot/main.c. You can
+   read about what this does in the next part.
+
+Conclusion
+
+   This is the end of the first part about Linux kernel insides. If you
+   have questions or suggestions, ping me on Twitter [146]0xAX, drop me an
+   [147]email, or just create an [148]issue. In the next part, we will see
+   the first C code that executes in the Linux kernel setup, the
+   implementation of memory routines such as memset, memcpy, earlyprintk,
+   early console implementation and initialization, and much more.
+
+   Please note that English is not my first language and I am really sorry
+   for any inconvenience. If you find any mistakes please send me PR to
+   [149]linux-insides.
+
+Links
+
+     * [150]Intel 80386 programmer's reference manual 1986
+     * [151]Minimal Boot Loader for Intel® Architecture
+     * [152]Minimal Boot Loader in Assembler with comments
+     * [153]8086
+     * [154]80386
+     * [155]Reset vector
+     * [156]Real mode
+     * [157]Linux kernel boot protocol
+     * [158]coreboot developer manual
+     * [159]Ralf Brown's Interrupt List
+     * [160]Power supply
+     * [161]Power good signal
+
+results matching ""
+
+No results matching ""
+
+References
+
+   Visible links:
+   1. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-2.html
+   2. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/
+   3. https://archive.org/includes/donate.php?as_page=1&platform=wb&referer=https%3A//web.archive.org/web/20230308144716/https%3A//0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+   4. https://web.archive.org/web/
+   5. https://web.archive.org/web/20230308144716*/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+   6. https://web.archive.org/web/20230125232251/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+   7. https://web.archive.org/web/20230221231350/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+   8. https://web.archive.org/web/20230322150040/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+   9. https://web.archive.org/web/20220120153936/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+  10. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html#expand
+  11. https://archive.org/details/mega-002
+  12. https://web.archive.org/web/20230308144716/https://legacy.gitbook.com/book/0xax/linux-insides
+  13. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/
+  14. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/
+  15. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+  16. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-2.html
+  17. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-3.html
+  18. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-4.html
+  19. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-5.html
+  20. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-6.html
+  21. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/
+  22. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-1.html
+  23. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-2.html
+  24. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-3.html
+  25. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-4.html
+  26. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-5.html
+  27. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-6.html
+  28. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-7.html
+  29. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-8.html
+  30. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-9.html
+  31. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-10.html
+  32. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/
+  33. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-1.html
+  34. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-2.html
+  35. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-3.html
+  36. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-4.html
+  37. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-5.html
+  38. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-6.html
+  39. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-7.html
+  40. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-8.html
+  41. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-9.html
+  42. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-10.html
+  43. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SysCall/
+  44. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SysCall/linux-syscall-1.html
+  45. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SysCall/linux-syscall-2.html
+  46. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SysCall/linux-syscall-3.html
+  47. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SysCall/linux-syscall-4.html
+  48. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SysCall/linux-syscall-5.html
+  49. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SysCall/linux-syscall-6.html
+  50. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Timers/
+  51. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-1.html
+  52. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-2.html
+  53. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-3.html
+  54. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-4.html
+  55. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-5.html
+  56. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-6.html
+  57. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-7.html
+  58. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SyncPrim/
+  59. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SyncPrim/linux-sync-1.html
+  60. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SyncPrim/linux-sync-2.html
+  61. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SyncPrim/linux-sync-3.html
+  62. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SyncPrim/linux-sync-4.html
+  63. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SyncPrim/linux-sync-5.html
+  64. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/SyncPrim/linux-sync-6.html
+  65. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/MM/
+  66. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/MM/linux-mm-1.html
+  67. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/MM/linux-mm-2.html
+  68. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/MM/linux-mm-3.html
+  69. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Cgroups/
+  70. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Cgroups/linux-cgroups-1.html
+  71. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Concepts/
+  72. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html
+  73. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-2.html
+  74. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-3.html
+  75. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-4.html
+  76. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/DataStructures/
+  77. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/DataStructures/linux-datastructures-1.html
+  78. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/DataStructures/linux-datastructures-2.html
+  79. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/DataStructures/linux-datastructures-3.html
+  80. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Theory/
+  81. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Theory/linux-theory-1.html
+  82. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Theory/linux-theory-2.html
+  83. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Theory/linux-theory-3.html
+  84. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Misc/
+  85. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Misc/linux-misc-1.html
+  86. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Misc/linux-misc-2.html
+  87. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Misc/linux-misc-3.html
+  88. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Misc/linux-misc-4.html
+  89. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/KernelStructures/
+  90. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/KernelStructures/linux-kernelstructure-1.html
+  91. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/LINKS.html
+  92. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/contributors.html
+  93. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/
+  94. https://web.archive.org/web/20230308144716/https://0xax.github.io/categories/assembler/
+  95. https://web.archive.org/web/20230308144716/https://twitter.com/0xAX
+  96. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/anotherworldofworld@gmail.com
+  97. https://web.archive.org/web/20230308144716/https://github.com/0xAX/linux-insides/issues/new
+  98. https://web.archive.org/web/20230308144716/https://github.com/0xAX/linux-insides
+  99. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Power_supply
+ 100. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Power_good_signal
+ 101. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Intel_80386
+ 102. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Real_mode
+ 103. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Memory_segmentation
+ 104. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Intel_8086
+ 105. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Memory_segmentation
+ 106. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/A20_line
+ 107. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Reset_vector
+ 108. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/JMP_%28x86_instruction%29
+ 109. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/BIOS
+ 110. https://web.archive.org/web/20230308144716/https://www.coreboot.org/
+ 111. https://web.archive.org/web/20230308144716/http://ref.x86asm.net/coder32.html#xE9
+ 112. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Master_boot_record
+ 113. https://web.archive.org/web/20230308144716/https://www.qemu.org/
+ 114. https://web.archive.org/web/20230308144716/http://www.ctyme.com/intr/rb-0106.htm
+ 115. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Intel_8086
+ 116. https://web.archive.org/web/20230308144716/https://www.coreboot.org/Developer_Manual/Memory_map
+ 117. https://web.archive.org/web/20230308144716/https://www.gnu.org/software/grub/
+ 118. https://web.archive.org/web/20230308144716/http://www.syslinux.org/wiki/index.php/The_Syslinux_Project
+ 119. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/Documentation/x86/boot.txt
+ 120. https://web.archive.org/web/20230308144716/http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/boot/i386/pc/boot.S;hb=HEAD
+ 121. https://web.archive.org/web/20230308144716/http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/boot/i386/pc/diskboot.S;hb=HEAD
+ 122. https://web.archive.org/web/20230308144716/http://git.savannah.gnu.org/gitweb/?p=grub.git;a=blob;f=grub-core/kern/main.c
+ 123. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/setup.ld
+ 124. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/header.S
+ 125. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/Documentation/x86/boot.txt#L354
+ 126. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/Documentation/x86/boot.txt#L156
+ 127. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/header.S
+ 128. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/header.S#L292
+ 129. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/DOS_MZ_executable
+ 130. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Portable_Executable
+ 131. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Unified_Extensible_Firmware_Interface
+ 132. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/Documentation/x86/boot.txt#L156
+ 133. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/.bss
+ 134. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/main.c
+ 135. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/header.S#L46
+ 136. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/header.S#L602
+ 137. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Program_counter
+ 138. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/header.S#L575
+ 139. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/header.S#L589
+ 140. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/setup.ld
+ 141. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/header.S#L320
+ 142. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/.bss
+ 143. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/setup.ld
+ 144. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/setup.ld
+ 145. https://web.archive.org/web/20230308144716/https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/main.c
+ 146. https://web.archive.org/web/20230308144716/https://twitter.com/0xAX
+ 147. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/anotherworldofworld@gmail.com
+ 148. https://web.archive.org/web/20230308144716/https://github.com/0xAX/linux-internals/issues/new
+ 149. https://web.archive.org/web/20230308144716/https://github.com/0xAX/linux-internals
+ 150. https://web.archive.org/web/20230308144716/http://css.csail.mit.edu/6.858/2014/readings/i386.pdf
+ 151. https://web.archive.org/web/20230308144716/https://www.cs.cmu.edu/~410/doc/minimal_boot.pdf
+ 152. https://web.archive.org/web/20230308144716/https://github.com/Stefan20162016/linux-insides-code/blob/master/bootloader.asm
+ 153. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Intel_8086
+ 154. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Intel_80386
+ 155. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Reset_vector
+ 156. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Real_mode
+ 157. https://web.archive.org/web/20230308144716/https://www.kernel.org/doc/Documentation/x86/boot.txt
+ 158. https://web.archive.org/web/20230308144716/https://www.coreboot.org/Developer_Manual
+ 159. https://web.archive.org/web/20230308144716/http://www.ctyme.com/intr/int.htm
+ 160. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Power_supply
+ 161. https://web.archive.org/web/20230308144716/https://en.wikipedia.org/wiki/Power_good_signal
+
+   Hidden links:
+ 163. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+ 164. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+ 165. https://archive.org/account/login.php
+ 166. http://faq.web.archive.org/
+ 167. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html#close
+ 168. https://web.archive.org/web/20230308144716/http://web.archive.org/screenshot/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+ 169. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+ 170. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+ 171. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+ 172. https://web.archive.org/web/20230308144716/https://www.gitbook.com/?utm_source=public_site_legacy&utm_medium=referral&utm_campaign=trademark&utm_term=0xax&utm_content=powered_by
+ 173. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/
+ 174. https://web.archive.org/web/20230308144716/https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-2.html

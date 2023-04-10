@@ -1,0 +1,482 @@
+uflbbl - USTAR Floppy Linux BIOS Boot Loader
+--------------------------------------------
+
+For old BIOS based booting, loading a set of floppies which contain
+the kernel, the ramdisk, etc. in USTAR format. It can only load
+Linux kernels and ramdisks currently. And though it might be able
+to boot a AMD64 kernel this is not the primary focus. It is there
+to boot on old IA-32 based machines which have an original floppy
+drive.
+
+The filenames recognized are:
+- 'bzImage': the Linux kernel
+- 'ramdisk.img': the initial ramdisk
+- 'EOF': an empty file indicating the end of the tar file
+
+Customization of boot parameters must be done in source currently
+in 'KERNEL_CMD_LINE' in 'boot.asm'.
+
+You can also change the greeting mesage in varialble 'MESSAGE_GREETING'
+in 'boot.asm' to your likeing.
+
+An example boot sequence looks as follows:
+
+Booting from Floppy...
+UFLBB loading...
+Checking A20 address gate.. + enabled
+Switching to unreadl mode.. enabled
+Boot parameters 0x00 0x04 0x02 0x13
+ bzImage 00004727760 0013AFF0!
+Number of real-mode kernel sectors: 1D
+Number of protected-mode kernel sectors: 09BA
+Linux boot protocol version: 02.0F
+Linux kernel version: 6.2.10 (user@machine) #1 Mon Apr 10 11:33:20 CET 2023
+ ramdisk.img 00012114554 0028996C!
+Insert next floppy and press any key to continue..
+Insert next floppy and press any key to continue..
+Insert next floppy and press any key to continue..
+ EOF 00000000000 00000000
+Reached end of tar file..
+Ramdisk address: 008000000
+Ramdisk size: 0028996C
+Booting kernel..
+early console in setup code
+early console in extract_kernel
+input_data: 0x01328079
+input_len: 0x00132e1c
+output: 0x01000000
+output_len: 0x0032ce60
+kernel_total_size: 0x00472000
+needed_size: 0x00472000
+Decompressing Linux...
+...
+
+requirements
+------------
+
+nasm
+
+how to build a set of bootable floppies
+---------------------------------------
+
+Create a 'bzImage' kernel and an initial ramdisk 'ramdisk.img'.
+
+Assemble 'boot.asm', put it to start of 'floppy.img', tar the kernel,
+the 'ramdisk.img' and the 'EOF' file into a 'data.tar' file, concatenate
+the boot loader file 'boot.img' and the 'data.tar' file, then
+split into floppy size (assuming you have 3 1/4" 1.44MB floppies).
+
+nasm -o boot.img boot.asm
+touch EOF
+tar -cvf data.tar -b1 bzImage ramdisk.img EOF
+cat boot.img data.tar > floppy.img
+./lstar floppy.img
+split -d -b 1474560 floppy.img floppy
+dd if=floppy00 of=/dev/fd0 bs=512
+dd if=floppy01 of=/dev/fd0 bs=512
+..
+
+Boot the floppies in order, insert next floppy if asked by the boot
+loader.
+
+'lstar' is a small convenience program to list the entries in the tar
+(of course also 'tar xvf' works for this).
+
+gcc -lbsd -o lstar src/lstar.c
+./lstar floppy.img
+
+testing
+-------
+
+tests/run_qemu.sh 
+
+when asked to change the floppy change to the Qemu console and 
+type 'change floppy0 floppy01' (same for all other floppies).
+
+floppy format
+-------------
+
+512 bytes	MBR stage 1 simple boot loader and magic boot string
+		loads stage 2 directly following stage 1, also assumes
+		stage 2 fits on one track of the floppy, so we don't
+		need a complicated loading method probing tracks per sector
+1024 bytes	stage 2 boot loader, interprets tar format one sector after
+		stage 2 and reads files into memory (vmlinuz, ramdisk.img)
+N		tar file format (no compression, we expect the files to
+		be well compressed). 2 blocks .ustar format, file names
+		are easy accessible (vmlinuz, ramdisk.img). We sacrifice 512
+		bytes for easier reading in multiple disks (for instance
+		a kernel disk, an initial ramdisk, a driver disk for
+		SCSI, a root file system, etc.), we could even do multi-floppy
+		kernels, so we can read the kernel distributed on more than
+		one floppy.
+
+ustar/tar format
+----------------
+
+offset			length		description				example
+byte 0			100		filename in ascii, zero-term string	"bzImage"
+byte 0x7c (124)		12		length in octal, zero-term string	"00004014360"
+byte 0x94 (148)		8		checksum in octal, zero-term string	"012757"
+					with an ending space for some reason
+					sum the header bytes with the checksum
+					bytes as spaces (0x20)
+byte 0x101 (257)	6		UStar indicator, zero-term string	"ustar"
+					one of the easiest ways to detect
+					a tar header sector
+
+ramdisk
+-------
+
+find . | cpio -H newc -o -R root:root | xz --check=crc32 > ../ramdisk.img
+
+memory layout
+-------------
+
+0x07c00 - 0x08fff	boot loader
+0x09000 - 0x091ff	floppy read buffer
+0x0e000	- 0x09200	stack of real mode kernel
+0x10000 - 0x101ff	Linux zero page (first part)
+0x10200 - 0x103ff	zero page (part two), real mode entry point at 0x10200
+0x10400 - xxx		continue code of real mode kernel
+0x1e000 - 0xe0ff	cmd line for kernel
+0x100000 - xxx		protected mode kernel code (at 1 MB)
+0x800000 - xxx		ram disk (at 8 MB)
+		
+state machine
+-------------
+
+tar state machine: reading metadata, reading data, we know
+whether we are in the kernel, ramdisk, etc.
+kernel substates:
+- sector 1: read number of real mode sectors
+- sector 2: read and check params, set params
+- sector >2: always read and copy data from floppy to destination area
+
+error codes
+-----------
+
+error codes consist of a error class (DISK, KERN) and a code
+
+ERR DISK 0x01	stage 1 read error while reading stage 2
+ERR DISK 0x02	stage 1 short read error (we didn't read as many stage 2
+		sectors as expected)
+ERR DISK 0x03	reading and interpreting tar state machine error
+ERR DISK 0xXX	other read errors (BIOS int 0x13 codes), stage 2
+ERR A20  0x01	A20 address line not enabled
+ERR KERN 0x01	kernel read state machine error
+ERR KERN 0x02	kernel signature 'HdrS' not found
+ERR KERN 0x03	kernel boot protocol too old
+ERR KERN 0x04	kernel cannot be started (or better, we return from the
+		real mode jump)
+
+Linux IA-32 boot sequence
+-------------------------
+
+- load Kernel boot sector at 0x10000 (first 512 bytes)
+- read 0x10000+0x1f1 number of sectors
+  => minimal 4 sectors (if 0 is in 1f1), number of setup sectors
+- read 0x10200 (second part of the zero page)
+- compare 0x10202 to linux header 'HdrS', must be equal
+- compare 0x10206 to linux boot protocol version, don't allow anything
+  below 0x215 (the newest one) for now
+- set various zero page data
+  - test for KASLR enabled
+    0x10211 has bit 1 set?
+    (this we might not want to do for old i486 kernels and systems)
+  - set 0xFF for non-registered boot loader in 0x10210
+  - set 0x80 in loadflags 0x10211
+    - CAN_USE_HEAP (bit 7)
+    - LOADED_HIGH? where do we load protected mode code?
+  - set head_end_ptr 0x10224 to 0xde00
+    ; heap_end = 0xe000
+    ; heap_end_ptr = heap_end - 0x200 = 0xde00
+      mov word [es:0x224], 0xde00 ;head_end_ptr
+    "Set this field to the offset (from the beginning of the real-mode
+     code) of the end of the setup stack/heap, minus 0x0200."
+  - set 0x10228 to 0x1e000
+     set to mov dword [es:0x228], 0x1e000 ;cmd line ptr
+     mov	dword [es:0x228], 0x1e000	; set cmd_line_ptr
+     also copy your command line to 0x1e000, for now from the boot loader
+     data segment (initialized data) area.
+     At offset 0x0020 (word), “cmd_line_magic”, enter the magic number 0xA33F.
+     At offset 0x0022 (word), “cmd_line_offset”, enter the offset of the kernel command line (relative to the start of the real-mode kernel).
+     The kernel command line must be within the memory region covered by setup_move_size, so you may need to adjust this field.
+- read to 0x10400 N-1 sectors (as much as we calculated above) as the
+  real mode kernel part
+- 0x1001f4 is the 16-byte paragraphs of 32-bit code for protected mode
+  kernel to load -> transform to 512 byte sectors to read
+- eventually get the prefered loading location for the kernel
+- load the protected part to 0x100000 by loading it to low memory and
+  copy it to high memory in unreal mode
+- print kernel version number, 020E, offset, but we must load the complete
+  kernel first
+- at end of kernel PM code read check if we have the same size as the tar
+  entry
+- run_kernel (real mode)
+	cli
+	mov	ax, 0x1000
+	mov	ds, ax
+	mov	es, ax
+	mov	fs, ax
+	mov	gs, ax
+	mov	ss, ax
+	mov	sp, 0xe000
+	jmp	0x1020:0
+- eventually get the prefered loading location for the ramdisk
+  or highest possible location (should make the kernel happy), but
+  then we have to know a little bit about the memory layout and size of
+  the machine..
+- read ram image
+  - read octal size in tar metadata of ramdisk, convert do decimal
+  - set address and size in kernel zero page
+    - 0x218/4 ramdisk image address
+    - 0x21c/4 ramdisk image size
+
+Bochs commands
+--------------
+
+# have a look at the boot.map file for the address of a symbol
+# set breakpoint
+b 0x7F93
+
+# dump memory in floppy read buffer
+x /30b 0x0008800
+
+# dump real mode kernel code/data
+x /30b 0x0010000
+
+interrupts
+----------
+
+Relevant interrupts as documented in http://www.cs.cmu.edu/~ralf/files.html:
+
+--------B-1302-------------------------------
+INT 13 - DISK - READ SECTOR(S) INTO MEMORY
+	AH = 02h
+	AL = number of sectors to read (must be nonzero)
+	CH = low eight bits of cylinder number
+	CL = sector number 1-63 (bits 0-5)
+	     high two bits of cylinder (bits 6-7, hard disk only)
+	DH = head number
+	DL = drive number (bit 7 set for hard disk)
+	ES:BX -> data buffer
+Return: CF set on error
+	    if AH = 11h (corrected ECC error), AL = burst length
+	CF clear if successful
+	AH = status (see #00234)
+	AL = number of sectors transferred (only valid if CF set for some
+	      BIOSes)
+Notes:	errors on a floppy may be due to the motor failing to spin up quickly
+	  enough; the read should be retried at least three times, resetting
+	  the disk with AH=00h between attempts
+	most BIOSes support "multitrack" reads, where the value in AL
+	  exceeds the number of sectors remaining on the track, in which
+	  case any additional sectors are read beginning at sector 1 on
+	  the following head in the same cylinder; the MSDOS CONFIG.SYS command
+	  MULTITRACK (or the Novell DOS DEBLOCK=) can be used to force DOS to
+	  split disk accesses which would wrap across a track boundary into two
+	  separate calls
+	the IBM AT BIOS and many other BIOSes use only the low four bits of
+	  DH (head number) since the WD-1003 controller which is the standard
+	  AT controller (and the controller that IDE emulates) only supports
+	  16 heads
+	AWARD AT BIOS and AMI 386sx BIOS have been extended to handle more
+	  than 1024 cylinders by placing bits 10 and 11 of the cylinder number
+	  into bits 6 and 7 of DH
+	under Windows95, a volume must be locked (see INT 21/AX=440Dh/CX=084Bh)
+	  in order to perform direct accesses such as INT 13h reads and writes
+	all versions of MS-DOS (including MS-DOS 7 [Windows 95]) have a bug
+	  which prevents booting on hard disks with 256 heads (FFh), so many
+	  modern BIOSes provide mappings with at most 255 (FEh) heads
+	some cache drivers flush their buffers when detecting that DOS is
+	  bypassed by directly issuing INT 13h from applications.  A dummy
+	  read can be used as one of several methods to force cache
+	  flushing for unknown caches (e.g. before rebooting).
+BUGS:	When reading from floppies, some AMI BIOSes (around 1990-1991) trash
+	  the byte following the data buffer, if it is not arranged to an even
+	  memory boundary.  A workaround is to either make the buffer word
+	  aligned (which may also help to speed up things), or to add a dummy
+	  byte after the buffer.
+	MS-DOS may leave interrupts disabled on return from this function.
+	Apparently some BIOSes or intercepting resident software have bugs
+	  that may destroy DX on return or not properly set the Carry flag.
+	  At least some Microsoft software frames calls to this function with
+	  PUSH DX, STC, INT 13h, STI, POP DX.
+	on the original IBM AT BIOS (1984/01/10) this function does not disable
+	  interrupts for harddisks (DL >= 80h).	 On these machines the MS-DOS/
+	  PC DOS IO.SYS/IBMBIO.COM installs a special filter to bypass the
+	  buggy code in the ROM (see CALL F000h:211Eh)
+SeeAlso: AH=03h,AH=0Ah,AH=06h"V10DISK.SYS",AH=21h"PS/1",AH=42h"IBM"
+SeeAlso: INT 21/AX=440Dh/CX=084Bh,INT 4D/AH=02h
+
+--------B-1300-------------------------------
+INT 13 - DISK - RESET DISK SYSTEM
+	AH = 00h
+	DL = drive (if bit 7 is set both hard disks and floppy disks reset)
+Return: AH = status (see #00234)
+	CF clear if successful (returned AH=00h)
+	CF set on error
+Note:	forces controller to recalibrate drive heads (seek to track 0)
+	for PS/2 35SX, 35LS, 40SX and L40SX, as well as many other systems,
+	  both the master drive and the slave drive respond to the Reset
+	  function that is issued to either drive
+SeeAlso: AH=0Dh,AH=11h,INT 21/AH=0Dh,INT 4D/AH=00h"TI Professional"
+SeeAlso: INT 56"Tandy 2000",MEM 0040h:003Eh
+
+--------B-1308-------------------------------
+INT 13 - DISK - GET DRIVE PARAMETERS (PC,XT286,CONV,PS,ESDI,SCSI)
+	AH = 08h
+	DL = drive (bit 7 set for hard disk)
+	ES:DI = 0000h:0000h to guard against BIOS bugs
+Return: CF set on error
+	    AH = status (07h) (see #00234)
+	CF clear if successful
+	    AH = 00h
+	    AL = 00h on at least some BIOSes
+	    BL = drive type (AT/PS2 floppies only) (see #00242)
+	    CH = low eight bits of maximum cylinder number
+	    CL = maximum sector number (bits 5-0)
+		 high two bits of maximum cylinder number (bits 7-6)
+	    DH = maximum head number
+	    DL = number of drives
+	    ES:DI -> drive parameter table (floppies only)
+Notes:	may return successful even though specified drive is greater than the
+	  number of attached drives of that type (floppy/hard); check DL to
+	  ensure validity
+	for systems predating the IBM AT, this call is only valid for hard
+	  disks, as it is implemented by the hard disk BIOS rather than the
+	  ROM BIOS
+	the IBM ROM-BIOS returns the total number of hard disks attached
+	  to the system regardless of whether DL >= 80h on entry.
+	Toshiba laptops with HardRAM return DL=02h when called with DL=80h,
+	  but fail on DL=81h.  The BIOS data at 40h:75h correctly reports 01h.
+	may indicate only two drives present even if more are attached; to
+	  ensure a correct count, one can use AH=15h to scan through possible
+	  drives
+	Reportedly some Compaq BIOSes with more than one hard disk controller
+	  return only the number of drives DL attached to the corresponding
+	  controller as specified by the DL value on entry.  However, on
+	  Compaq machines with "COMPAQ" signature at F000h:FFEAh,
+	  MS-DOS/PC DOS IO.SYS/IBMBIO.COM call INT 15/AX=E400h and 
+	  INT 15/AX=E480h to enable Compaq "mode 2" before retrieving the count
+	  of hard disks installed in the system (DL) from this function.
+	the maximum cylinder number reported in CX is usually two less than
+	  the total cylinder count reported in the fixed disk parameter table
+	  (see INT 41h,INT 46h) because early hard disks used the last cylinder
+	  for testing purposes; however, on some Zenith machines, the maximum
+	  cylinder number reportedly is three less than the count in the fixed
+	  disk parameter table.
+	for BIOSes which reserve the last cylinder for testing purposes, the
+	  cylinder count is automatically decremented
+	on PS/1s with IBM ROM DOS 4, nonexistent drives return CF clear,
+	  BX=CX=0000h, and ES:DI = 0000h:0000h
+	machines with lost CMOS memory may return invalid data for floppy
+	  drives. In this situation CF is cleared, but AX,BX,CX,DX,DH,DI,
+	  and ES contain only 0.  At least under some circumstances, MS-DOS/
+	  PC DOS IO.SYS/IBMBIO.COM just assumes a 360 KB floppy if it sees
+	  CH to be zero for a floppy.
+	the PC-Tools PCFORMAT program requires that AL=00h before it will
+	  proceed with the formatting
+	if this function fails, an alternative way to retrieve the number
+	  of floppy drives installed in the system is to call INT 11h.
+	In fact, the MS-DOS/PC-DOS IO.SYS/IBMBIO.COM attempts to get the
+	  number of floppy drives installed from INT 13/AH=08h, when INT 11h
+	  AX bit 0 indicates there are no floppy drives installed. In addition
+	  to testing the CF flag, it only trusts the result when the number of
+	  sectors (CL preset to zero) is non-zero after the call.
+BUGS:	several different Compaq BIOSes incorrectly report high-numbered
+	  drives (such as 90h, B0h, D0h, and F0h) as present, giving them the
+	  same geometry as drive 80h; as a workaround, scan through disk
+	  numbers, stopping as soon as the number of valid drives encountered
+	  equals the value in 0040h:0075h
+	a bug in Leading Edge 8088 BIOS 3.10 causes the DI,SI,BP,DS, and ES
+	  registers to be destroyed
+	some Toshiba BIOSes (at least before 1995, maybe some laptops???
+	  with 1.44 MB floppies) have a bug where they do not set the ES:DI
+	  vector even for floppy drives. Hence these registers should be
+	  preset with zero before the call and checked to be non-zero on
+	  return before using them.  Also it seems these BIOSes can return
+	  wrong info in BL and CX, as S/DOS 1.0 can be configured to preset
+	  these registers as for an 1.44 MB floppy.
+	the PS/2 Model 30 fails to reset the bus after INT 13/AH=08h and
+	  INT 13/AH=15h. A workaround is to monitor for these functions
+	  and perform a transparent INT 13/AH=01h status read afterwards.
+	  This will reset the bus. The MS-DOS 6.0 IO.SYS takes care of
+	  this by installing a special INT 13h interceptor for this purpose.
+	AD-DOS may leave interrupts disabled on return from this function.
+	Some Microsoft software explicitly sets STI after return.
+SeeAlso: AH=06h"Adaptec",AH=13h"SyQuest",AH=48h,AH=15h,INT 1E
+SeeAlso: INT 41"HARD DISK 0"
+
+(Table 00242)
+Values for diskette drive type:
+ 01h	360K
+ 02h	1.2M
+ 03h	720K
+ 04h	1.44M
+ 05h	??? (reportedly an obscure drive type shipped on some IBM machines)
+	2.88M on some machines (at least AMI 486 BIOS)
+ 06h	2.88M
+ 10h	ATAPI Removable Media Device
+--------d-1308-------------------------------
+INT 13 - V10DISK.SYS - SET FORMAT
+	AH = 08h
+	AL = number of sectors
+	CH = cylinder number (bits 8,9 in high bits of CL)
+	CL = sector number
+	DH = head
+	DL = drive
+Return: AH = status code (see #00234)
+Program: V10DISK.SYS is a driver for the Flagstaff Engineering 8" floppies
+Note:	details not available
+SeeAlso: AH=03h,AH=06h"V10DISK.SYS"
+
+references
+----------
+
+- kernel boot up in all it's details, really nice documentation:
+  - https://www.kernel.org/doc/html/latest/x86/boot.html
+  - https://www.kernel.org/doc/html/latest/x86/zero-page.html
+  - https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html
+  - https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-2.html
+- debug kernel with bochs
+  - https://bochs.sourceforge.io/doc/docbook/user/debugging-with-gdb.html
+  - https://www.kernel.org/doc/html/v4.12/dev-tools/gdb-kernel-debugging.html
+  - https://www.cs.princeton.edu/courses/archive/fall09/cos318/precepts/bochs_gdb.html
+- interrupt list and BIOS documentation
+  - http://www.cs.cmu.edu/~ralf/files.html
+  - https://members.tripod.com/vitaly_filatov/ng/asm/
+- Linux boot protocol
+  - https://docs.kernel.org/x86/boot.html
+  - https://www.spinics.net/lists/linux-integrity/msg14580.html: version string
+- get available memory
+  - http://www.uruk.org/orig-grub/mem64mb.html
+  - https://wiki.osdev.org/Detecting_Memory_(x86)
+- create ramdisk.img:
+  https://people.freedesktop.org/~narmstrong/meson_drm_doc/admin-guide/initrd.html
+- tar format
+  - https://wiki.osdev.org/USTAR
+  - https://en.wikipedia.org/wiki/Tar_(computing)#UStar_format
+  - https://github.com/calccrypto/tar
+  - https://github.com/Papierkorb/tarfs
+- other minimal bootloader projects
+  - https://github.com/wikkyk/mlb
+  - https://github.com/owenson/tiny-linux-bootloader and
+    https://github.com/guineawheek/tiny-floppy-bootloader
+  - http://dc0d32.blogspot.com/2010/06/real-mode-in-c-with-gcc-writing.html (Small C and 16-bit code,
+    leads to a quite big boot loader, in the end we didn't use C but Unreal mode 16/32-bittish assembly)
+  - https://wiki.syslinux.org/wiki/index.php?title=The_Syslinux_Project
+  - Lilo (but the code is hard to read and looks quite chaotic)
+  - Linux 1.x old boot floppy code
+
+todos
+-----
+
+- have an early console also for serial (uart8250 in assembly, yuck)
+- the kernel parameters are in boot.asm hard-coded, cannot be passed
+  from outside
+- test more A20 switching stuff on real hardware
+- better detection of swapped disks (but do we want a special sector
+  with disk 2 of 5? This is much harder to create)
+- test other floppy sizes

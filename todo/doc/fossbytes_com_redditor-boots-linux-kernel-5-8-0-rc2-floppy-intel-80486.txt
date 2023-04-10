@@ -1,0 +1,339 @@
+    #[1]Fossbytes » Feed [2]Fossbytes » Comments Feed [3]Fossbytes »
+   Redditor Boots Linux Kernel 5.8 On 30-Year-Old Intel Processor via
+   Floppy Disk Comments Feed [4]alternate [5]alternate [6]alternate
+
+   [7]Skip to content
+
+   [8]FOSSBYTES TECH SIMPLIFIED LOGO
+   [9]Facebook
+   [10]Twitter
+   [11]Instagram
+
+     * [12]News
+     * [13]Geek
+     * [14]Hacked
+     * [15]Gaming
+     * [16]Drive X
+     * [17]How To
+     * [18]Top X
+     * [19]Tools
+
+   Menu
+
+     * [20]News
+     * [21]Geek
+     * [22]Hacked
+     * [23]Gaming
+     * [24]Drive X
+     * [25]How To
+     * [26]Top X
+     * [27]Tools
+
+   Search
+   ____________________
+
+   Menu
+
+     * [28]News
+     * [29]Geek
+     * [30]Hacked
+     * [31]Gaming
+     * [32]Drive X
+     * [33]How To
+     * [34]Top X
+     * [35]Tools
+
+   [36]FOSSBYTES TECH SIMPLIFIED LOGO
+   Search
+   ____________________
+   Close
+
+   News
+
+     * [37]Privacy
+     * [38]Facebook
+     * [39]Apple
+     * [40]Google
+     * [41]Microsoft
+     * [42]Linux
+     * [43]Tesla
+     * [44]EV
+
+   Menu
+
+     * [45]Privacy
+     * [46]Facebook
+     * [47]Apple
+     * [48]Google
+     * [49]Microsoft
+     * [50]Linux
+     * [51]Tesla
+     * [52]EV
+
+     * [53]Geek, [54]News
+
+Redditor Boots Linux Kernel 5.8 On 30-Year-Old Intel Processor via Floppy
+Disk
+
+     * [55]Sarvottam Kumar
+     * [56]June 30, 2020
+
+   Redditor Booted Linux Kernel 5.8.0-rc2+ From A Floppy On Intel 80486
+
+   Do you remember your first PC on which you booted Linux from floppy?
+   Well, Floppy disk is almost dead. The majority of people now use USB
+   sticks or DVDs to install Linux distros on their PCs. However, retro
+   enthusiasts love to revive their old hardware and relive the flashback.
+
+   Recently, a Redditor who goes by the name
+   `FozzTexx' [57]demonstrated the latest stable Linux Kernel 5.8.0-rc2+
+   running from his floppy disk. He successfully booted a tiny kernel on a
+   30-year-old 32-bit Intel 80486 (i486 or 486) CPU.
+
+   Now, if you think Linux kernel has dropped support for anything older
+   than i686, it may prove you wrong. You know that freedom,
+   customization, and support for legacy hardware are the characteristics
+   of Linux.
+
+   Speaking of booting OS, if you're 90s kid, you may remember installing
+   Linux with boot floppies or installation CDs offered by Linux distros.
+   Nowadays, the scenario has changed as people download the ISO from
+   official websites and install it by creating a bootable USB or DVD.
+
+   In case you're still wondering about booting Linux from floppy, a retro
+   enthusiasts FozzTexx did it using a single 1.44MB floppy disk on his
+   i486 CPU.
+   Booting Linux from 1.44MB floppy Booting Linux from 1.44MB floppy
+
+   He pulled the fresh Kernel 5.8.0-rc2+ from the git repo and shrank it
+   to fit on a floppy using make tinyconfig. Then, he booted it on 486
+   into a busybox shell using rootfs.cpio.gz from Aboriginal Linux.
+
+   The tiny kernel surely misses network support or any other functional
+   support. Though it may seem useless, the Redditor also added options
+   like IDE support. Surprisingly, when he attached a hard drive and
+   booted into the shell, he could see the drive as connected and its full
+   capacity. You can see the result in the picture below.
+   Hard disk attached to 486 CPU Hard disk attached to 486 CPU
+
+   You can also read the Twitter [58]thread describing how he started
+   loading kernel 5.8 on a 486 from floppy.
+
+     This is for all you [59]#floppy lovers out there: Linux 5.8.0-rc2+
+     pulled fresh from the git repo this morning booting into a busybox
+     shell using the rootfs.cpio.gz from Aboriginal Linux.
+     [60]#RetroComputing [61]pic.twitter.com/zaB9lpggPX
+     -- FozzTexx (@FozzTexx) [62]June 28, 2020
+
+   If you also have a 486 system lying around and want to load Linux, you
+   can follow the tutorial which he'll put on his [63]blog site soon.
+   [64]Sarvottam Kumar
+   [65]
+
+Sarvottam Kumar
+
+   Being a fossbyter, I cover the latest releases, news, information, and
+   trends in the world of Linux and Open source.
+
+Leave a Comment [66]Cancel Reply
+
+   Your email address will not be published. Required fields are marked *
+
+   Type here..
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+   _____________________________________________
+
+   Name* ______________________________
+
+   Email* ______________________________
+
+   Website ______________________________
+
+   [ ] Save my name, email, and website in this browser for the next time
+   I comment.
+
+   Post Comment »
+
+News & Opeds
+
+   Tesla Model S and Model X
+
+[67]Why NHTSA Is Asking Tesla To Recall 158,000 Model S And Model X?
+
+   Netflix Movies 2021 All 70 Movies Coming To Netflix This Year
+
+[68]Netflix Movies 2021: All 70 Movies Releasing On Netflix This Year
+
+   Official Best of CES 2021 awards
+
+[69]CES 2021 Awards: This Is The Tech To Look Forward To In 2021
+
+   More From Fossbytes
+
+Popular In News
+
+   How do electric cars work_
+
+[70]How Do Electric Cars Work? Electric Motors And Batteries Explained
+
+   Netflix Movies 2021 All 70 Movies Coming To Netflix This Year
+
+[71]Netflix Movies 2021: All 70 Movies Releasing On Netflix This Year
+
+   Security-Focused Tails OS Plans To Switch From Xorg To Wayland
+
+[72]Security-Focused Tails OS Plans To Switch From Xorg To Wayland
+
+[73]CloudLinux Renames Its CentOS Alternative `Project Lenix' To `AlmaLinux'
+
+   FOSSBYTES
+
+     * [74]About Us
+     * [75]Privacy Policy
+     * [76]Cookie Policy
+
+   [77]Facebook
+   [78]Twitter
+   [79]Instagram
+     * [80]Contact Us
+     * [81]Our Team
+     * [82]Work With Us
+
+Learn Something New Today
+
+   [83]Academy
+
+   Fossbytes Media Pvt Ltd © 2021
+
+   FOSSBYTES
+
+   [84]Facebook
+   [85]Twitter
+   [86]Instagram
+
+Learn Something New Today
+
+   [87]Academy
+     * [88]About Us
+     * [89]Privacy Policy
+     * [90]Cookie Policy
+
+     * [91]Contact Us
+     * [92]Our Team
+     * [93]Work With Us
+
+   Fossbytes Media Pvt Ltd © 2021
+
+   Scroll to Top
+
+References
+
+   Visible links:
+   1. https://fossbytes.com/feed/
+   2. https://fossbytes.com/comments/feed/
+   3. https://fossbytes.com/redditor-boots-linux-kernel-5-8-0-rc2-floppy-intel-80486/feed/
+   4. https://fossbytes.com/wp-json/wp/v2/posts/173003
+   5. https://fossbytes.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Ffossbytes.com%2Fredditor-boots-linux-kernel-5-8-0-rc2-floppy-intel-80486%2F
+   6. https://fossbytes.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Ffossbytes.com%2Fredditor-boots-linux-kernel-5-8-0-rc2-floppy-intel-80486%2F&format=xml
+   7. https://fossbytes.com/redditor-boots-linux-kernel-5-8-0-rc2-floppy-intel-80486/#content
+   8. https://fossbytes.com/
+   9. https://www.facebook.com/fossbytes
+  10. https://twitter.com/Fossbytes14
+  11. https://instagram.com/fossbytes
+  12. https://fossbytes.com/category/news/
+  13. https://fossbytes.com/category/geek/
+  14. https://fossbytes.com/category/security/
+  15. https://fossbytes.com/category/entertainment/gaming-and-sports/
+  16. https://fossbytes.com/category/transportation/
+  17. https://fossbytes.com/category/how-to/
+  18. https://fossbytes.com/category/more/lists/
+  19. https://fossbytes.com/tools/
+  20. https://fossbytes.com/category/news/
+  21. https://fossbytes.com/category/geek/
+  22. https://fossbytes.com/category/security/
+  23. https://fossbytes.com/category/entertainment/gaming-and-sports/
+  24. https://fossbytes.com/category/transportation/
+  25. https://fossbytes.com/category/how-to/
+  26. https://fossbytes.com/category/more/lists/
+  27. https://fossbytes.com/tools/
+  28. https://fossbytes.com/category/news/
+  29. https://fossbytes.com/category/geek/
+  30. https://fossbytes.com/category/security/
+  31. https://fossbytes.com/category/entertainment/gaming-and-sports/
+  32. https://fossbytes.com/category/transportation/
+  33. https://fossbytes.com/category/how-to/
+  34. https://fossbytes.com/category/more/lists/
+  35. https://fossbytes.com/tools/
+  36. https://fossbytes.com/
+  37. https://fossbytes.com/tag/privacy/
+  38. https://fossbytes.com/tag/facebook/
+  39. https://fossbytes.com/tag/apple/
+  40. https://fossbytes.com/tag/google/
+  41. https://fossbytes.com/tag/microsoft/
+  42. https://fossbytes.com/tag/linux/
+  43. https://fossbytes.com/tag/tesla/
+  44. https://fossbytes.com/tag/electric-cars/
+  45. https://fossbytes.com/tag/privacy/
+  46. https://fossbytes.com/tag/facebook/
+  47. https://fossbytes.com/tag/apple/
+  48. https://fossbytes.com/tag/google/
+  49. https://fossbytes.com/tag/microsoft/
+  50. https://fossbytes.com/tag/linux/
+  51. https://fossbytes.com/tag/tesla/
+  52. https://fossbytes.com/tag/electric-cars/
+  53. https://fossbytes.com/category/geek/
+  54. https://fossbytes.com/category/news/
+  55. https://fossbytes.com/author/sarvottam/
+  56. https://fossbytes.com/2020/06/30/
+  57. https://www.reddit.com/r/retrobattlestations/comments/hi3kbq/booting_linux_kernel_580rc2_from_a_single_floppy/
+  58. https://twitter.com/FozzTexx/status/1277251556010676225
+  59. https://twitter.com/hashtag/floppy?src=hash&ref_src=twsrc%5Etfw
+  60. https://twitter.com/hashtag/RetroComputing?src=hash&ref_src=twsrc%5Etfw
+  61. https://t.co/zaB9lpggPX
+  62. https://twitter.com/FozzTexx/status/1277296880813105152?ref_src=twsrc%5Etfw
+  63. https://www.insentricity.com/
+  64. https://fossbytes.com/author/sarvottam/
+  65. https://fossbytes.com/author/sarvottam/
+  66. https://fossbytes.com/redditor-boots-linux-kernel-5-8-0-rc2-floppy-intel-80486/#respond
+  67. https://fossbytes.com/why-nhtsa-is-asking-tesla-to-recall-158000-model-s-and-model-x/
+  68. https://fossbytes.com/netflix-movies-2021-all-70-movies-releasing-on-netflix-this-year/
+  69. https://fossbytes.com/official-best-of-ces-2021/
+  70. https://fossbytes.com/how-do-electric-cars-work-electric-motors-and-batteries-explained/
+  71. https://fossbytes.com/netflix-movies-2021-all-70-movies-releasing-on-netflix-this-year/
+  72. https://fossbytes.com/security-focused-tails-os-plans-to-switch-from-xorg-to-wayland/
+  73. https://fossbytes.com/cloudlinux-renames-centos-alternative-project-lenix-to-almalinux/
+  74. https://fossbytes.com/about/
+  75. https://fossbytes.com/privacy-policy/
+  76. https://fossbytes.com/cookie-policy-for-fossbytes/
+  77. https://www.facebook.com/fossbytes
+  78. https://twitter.com/Fossbytes14
+  79. https://instagram.com/fossbytes
+  80. https://fossbytes.com/contact-us/
+  81. https://fossbytes.com/fossbytes-team/
+  82. https://fossbytes.com/jobs/
+  83. https://academy.fossbytes.com/
+  84. https://www.facebook.com/fossbytes
+  85. https://twitter.com/Fossbytes14
+  86. https://instagram.com/fossbytes
+  87. https://academy.fossbytes.com/
+  88. https://fossbytes.com/about/
+  89. https://fossbytes.com/privacy-policy/
+  90. https://fossbytes.com/cookie-policy-for-fossbytes/
+  91. https://fossbytes.com/contact-us/
+  92. https://fossbytes.com/fossbytes-team/
+  93. https://fossbytes.com/jobs/
+
+   Hidden links:
+  95. https://fossbytes.com/why-nhtsa-is-asking-tesla-to-recall-158000-model-s-and-model-x/
+  96. https://fossbytes.com/netflix-movies-2021-all-70-movies-releasing-on-netflix-this-year/
+  97. https://fossbytes.com/official-best-of-ces-2021/
+  98. https://fossbytes.com/how-do-electric-cars-work-electric-motors-and-batteries-explained/
+  99. https://fossbytes.com/netflix-movies-2021-all-70-movies-releasing-on-netflix-this-year/
+ 100. https://fossbytes.com/security-focused-tails-os-plans-to-switch-from-xorg-to-wayland/
+ 101. https://fossbytes.com/cloudlinux-renames-centos-alternative-project-lenix-to-almalinux/
