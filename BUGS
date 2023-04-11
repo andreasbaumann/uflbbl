@@ -1,0 +1,1 @@
+- 86BOX shows some weird unintialized string when booting the first floppy in the kernel version

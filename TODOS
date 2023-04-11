@@ -1,0 +1,7 @@
+- have an early console also for serial (uart8250 in assembly, yuck)
+- the kernel parameters are in boot.asm hard-coded, cannot be passed
+  from outside
+- test more A20 switching stuff on real hardware
+- better detection of swapped disks (but do we want a special sector
+  with disk 2 of 5? This is much harder to create)
+- test other floppy sizes
