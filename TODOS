@@ -5,3 +5,12 @@
 - better detection of swapped disks (but do we want a special sector
   with disk 2 of 5? This is much harder to create)
 - test other floppy sizes
+- have a GOTO<n> marker to go to the next floppy <n>, this is useful
+  for having for instance 2 floppies contain the kernel, then skip
+  to floppy 3 and following for the ramdisk, so we can create 2 sets
+  (boot and root floppies) and don't have to rebuild everything because
+  one byte changes in the kernel or in the ramdisk
+- have FLOPPY<n> markers which tell the boot loader, which flopy is
+  currently inserted. This helps also to detetc out-of-order insersion
+  of floppies (also add this detection code)
+
