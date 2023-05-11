@@ -13,4 +13,7 @@
 - have FLOPPY<n> markers which tell the boot loader, which flopy is
   currently inserted. This helps also to detetc out-of-order insersion
   of floppies (also add this detection code)
-
+- have a ustar entry PARAMS, so we can set the boot parameters with
+  a file instead of recompiling the boot image. This is also 1 block
+  on the floppy which can be easily patched without having to redo
+  the whole floppy write process.
