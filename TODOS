@@ -17,3 +17,7 @@
   a file instead of recompiling the boot image. This is also 1 block
   on the floppy which can be easily patched without having to redo
   the whole floppy write process.
+- partiall filling of a floppy, have an <end of floppy marker>, handy
+  for shacky media or drives which usually have a problem with the
+  higher number sectors (ok, we should calibrate and fix the drive
+  in this case probably)
