@@ -447,6 +447,9 @@ references
 - interrupt list and BIOS documentation
   - http://www.cs.cmu.edu/~ralf/files.html
   - https://members.tripod.com/vitaly_filatov/ng/asm/
+- unreal mode
+  - https://wiki.osdev.org/Unreal_Mode
+  - http://www.os2museum.com/wp/a-brief-history-of-unreal-mode/
 - Linux boot protocol
   - https://docs.kernel.org/x86/boot.html
   - https://www.spinics.net/lists/linux-integrity/msg14580.html: version string
@@ -469,3 +472,5 @@ references
   - https://wiki.syslinux.org/wiki/index.php?title=The_Syslinux_Project
   - Lilo (but the code is hard to read and looks quite chaotic)
   - Linux 1.x old boot floppy code
+- alternative implementations of a real mode boot loader
+  - http://dc0d32.blogspot.com/2010/06/real-mode-in-c-with-gcc-writing.html

@@ -335,13 +335,13 @@ Concluding remarks
 
 25 comments:
 
-    1. [19]Girija[20]Tuesday, June 15, 2010 at 6:12:00 PM GMT+5:30
+    1. [19]Girija[20]Tuesday, June 15, 2010 at 6:12:00PM GMT+5:30
        Dokyaawarun 10 foot.. kiwwa jaastach.
        :-|
        Reply[21]Delete
        Replies
             Reply
-    2. [22]descent[23]Tuesday, December 21, 2010 at 1:10:00 PM GMT+5:30
+    2. [22]descent[23]Tuesday, December 21, 2010 at 1:10:00PM GMT+5:30
        Hi,
        Thank you for your sharing.
        in void __NOINLINE __REGPARM print(const char *s)
@@ -355,7 +355,7 @@ Concluding remarks
        Reply[24]Delete
        Replies
             Reply
-    3. [25]descent[26]Tuesday, December 21, 2010 at 2:05:00 PM GMT+5:30
+    3. [25]descent[26]Tuesday, December 21, 2010 at 2:05:00PM GMT+5:30
        Hi,
        I use gcc-3.4 to compile again.
        I see no warning message, but in qemu,
@@ -365,7 +365,7 @@ Concluding remarks
        Reply[27]Delete
        Replies
             Reply
-    4. [28]descent[29]Tuesday, December 21, 2010 at 3:16:00 PM GMT+5:30
+    4. [28]descent[29]Tuesday, December 21, 2010 at 3:16:00PM GMT+5:30
        Hi,
        I got something. In 16bit mode, the pointer is 16bit length. So
        0xb8000 shortened to 0x8000.
@@ -382,7 +382,7 @@ Concluding remarks
        Reply[30]Delete
        Replies
             Reply
-    5. [31]Prashant[32]Tuesday, December 21, 2010 at 7:16:00 PM GMT+5:30
+    5. [31]Prashant[32]Tuesday, December 21, 2010 at 7:16:00PM GMT+5:30
        @descent: check the '--save-temps' preserved assembler version of
        the C function.
        This article assumes that the reader has low level programming
@@ -399,7 +399,7 @@ Concluding remarks
        Reply[33]Delete
        Replies
             Reply
-    6. [34]descent[35]Wednesday, December 22, 2010 at 9:41:00 AM GMT+5:30
+    6. [34]descent[35]Wednesday, December 22, 2010 at 9:41:00AM GMT+5:30
        Hi Prashant,
        Thank you for your explanation.
        Because in protected mode, I can use C,
@@ -409,19 +409,19 @@ Concluding remarks
        Reply[36]Delete
        Replies
             Reply
-    7. [37]Sebastian[38]Saturday, March 12, 2011 at 6:26:00 PM GMT+5:30
+    7. [37]Sebastian[38]Saturday, March 12, 2011 at 6:26:00PM GMT+5:30
        you are a genius!
        Reply[39]Delete
        Replies
             Reply
-    8. [40]Unknown[41]Sunday, April 17, 2011 at 5:48:00 AM GMT+5:30
+    8. [40]Unknown[41]Sunday, April 17, 2011 at 5:48:00AM GMT+5:30
        I've got that infamous runtime error...
        bootloader.exe has encountered a problem and needs to close. We are
        sorry for the inconvenience.
        Reply[42]Delete
        Replies
             Reply
-    9. [43]Unknown[44]Saturday, May 21, 2011 at 2:39:00 AM GMT+5:30
+    9. [43]Unknown[44]Saturday, May 21, 2011 at 2:39:00AM GMT+5:30
        Managed to do it in C++.
        Code is the same.
        Linker file needs to discard eh_frame.
@@ -432,14 +432,14 @@ Concluding remarks
        Reply[45]Delete
        Replies
             Reply
-   10. [46]Prashant[47]Saturday, May 21, 2011 at 3:02:00 AM GMT+5:30
+   10. [46]Prashant[47]Saturday, May 21, 2011 at 3:02:00AM GMT+5:30
        @abraker95: are you trying to run the MZ/PE image in windows? that
        is like sinning and then spitting on the devil when in hell.
        @boskov1985: cool man! let us know how it goes :D
        Reply[48]Delete
        Replies
             Reply
-   11. Anonymous[49]Friday, November 25, 2011 at 2:50:00 AM GMT+5:30
+   11. Anonymous[49]Friday, November 25, 2011 at 2:50:00AM GMT+5:30
        It's easier to to this without objcopy. Modern ld versions support
        --oformat=binary , so just one line does the direct compilation
        job.
@@ -449,25 +449,25 @@ Concluding remarks
        Reply[50]Delete
        Replies
             Reply
-   12. [51]Prashant[52]Friday, November 25, 2011 at 8:01:00 AM GMT+5:30
+   12. [51]Prashant[52]Friday, November 25, 2011 at 8:01:00AM GMT+5:30
        I can't verify right now whether it works, but thanks for letting
        us know, rpfh!
        Reply[53]Delete
        Replies
             Reply
-   13. [54]descent[55]Sunday, December 4, 2011 at 9:42:00 PM GMT+5:30
+   13. [54]descent[55]Sunday, December 4, 2011 at 9:42:00PM GMT+5:30
        Hi,
        The c code uses function call, why need not set stack (ss:esp)?
        Reply[56]Delete
        Replies
             Reply
-   14. [57]Prashant[58]Tuesday, December 6, 2011 at 10:18:00 AM GMT+5:30
+   14. [57]Prashant[58]Tuesday, December 6, 2011 at 10:18:00AM GMT+5:30
        good point @decent. I guess you will need to set up the stack first
        in main, probably in assembler.
        Reply[59]Delete
        Replies
             Reply
-   15. [60]descent[61]Saturday, December 24, 2011 at 8:02:00 PM GMT+5:30
+   15. [60]descent[61]Saturday, December 24, 2011 at 8:02:00PM GMT+5:30
        I change %ss:%esp to 0x07a0:0000,
        Is any side effect?
        void __NORETURN main(){
@@ -482,7 +482,7 @@ Concluding remarks
        Reply[62]Delete
        Replies
             Reply
-   16. [63]descent[64]Monday, July 30, 2012 at 8:16:00 AM GMT+5:30
+   16. [63]descent[64]Monday, July 30, 2012 at 8:16:00AM GMT+5:30
        Hi,
        I test c bootloader in real machine, in my eeepc 904, need add some
        code to setup stack.
@@ -495,24 +495,24 @@ Concluding remarks
        Reply[65]Delete
        Replies
             Reply
-   17. [66]axiomfinity[67]Saturday, April 20, 2013 at 10:46:00 AM GMT+5:30
+   17. [66]axiomfinity[67]Saturday, April 20, 2013 at 10:46:00AM GMT+5:30
        linker fails whats up with it..?
        Reply[68]Delete
        Replies
             Reply
-   18. [69]Prashant[70]Sunday, April 21, 2013 at 9:34:00 AM GMT+5:30
+   18. [69]Prashant[70]Sunday, April 21, 2013 at 9:34:00AM GMT+5:30
        Fails how? Can you please elaborate?
        Reply[71]Delete
        Replies
             Reply
-   19. [72]Unknown[73]Wednesday, November 13, 2013 at 12:51:00 PM GMT+5:30
+   19. [72]Unknown[73]Wednesday, November 13, 2013 at 12:51:00PM GMT+5:30
        Thank you for detaile explanation
        Linker failed nt sure why..ld: error: load segment overlap [0x7c00
        -> 0x7e50] and [0x7dfe -> 0x7e00]
        Reply[74]Delete
        Replies
             Reply
-   20. [75]osdev[76]Saturday, May 31, 2014 at 1:35:00 AM GMT+5:30
+   20. [75]osdev[76]Saturday, May 31, 2014 at 1:35:00AM GMT+5:30
        someone here? I need to test, but...
        "c"((s << 8) | s) <-- duplicate s in CH and CL?
        c = lba / (p->numh * p->spt); <-- 'c' is never used...
@@ -520,7 +520,7 @@ Concluding remarks
        Reply[77]Delete
        Replies
             Reply
-   21. [78]Unknown[79]Thursday, February 5, 2015 at 8:39:00 PM GMT+5:30
+   21. [78]Unknown[79]Thursday, February 5, 2015 at 8:39:00PM GMT+5:30
        Thank you for your nice post! I'm trying to run it on my x86-64
        linux box, but gcc reports errors like "bad register name rax", I'm
        a little confused by the various compiler options here, could you
@@ -529,7 +529,7 @@ Concluding remarks
        Reply[80]Delete
        Replies
          1. [81]Jose Fernando Lopez Fernandez[82]Friday, January 20, 2017
-            at 2:56:00 PM GMT+5:30
+            at 2:56:00PM GMT+5:30
             rax is a 64 bit register. A bootloader is running in 16 bits,
             so you cannot use rax (64 bit) or eax (32 bit). You have to
             use ax.
@@ -544,7 +544,7 @@ Concluding remarks
             Replies
                  Reply
          2. [84]Jose Fernando Lopez Fernandez[85]Friday, January 20, 2017
-            at 2:57:00 PM GMT+5:30
+            at 2:57:00PM GMT+5:30
             @Jing Peng
             rax is a 64 bit register. A bootloader is running in 16 bits,
             so you cannot use rax (64 bit) or eax (32 bit). You have to
@@ -560,7 +560,7 @@ Concluding remarks
             Replies
                  Reply
             Reply
-   22. [87]Unknown[88]Thursday, February 5, 2015 at 8:40:00 PM GMT+5:30
+   22. [87]Unknown[88]Thursday, February 5, 2015 at 8:40:00PM GMT+5:30
        Thank you for your nice post! I'm trying to run it on my x86-64
        linux box, but gcc reports errors like "bad register name rax", I'm
        a little confused by the various compiler options here, could you
@@ -569,7 +569,7 @@ Concluding remarks
        Reply[89]Delete
        Replies
             Reply
-   23. [90]Unknown[91]Sunday, February 7, 2016 at 8:43:00 PM GMT+5:30
+   23. [90]Unknown[91]Sunday, February 7, 2016 at 8:43:00PM GMT+5:30
        hello i ma atif
        Reply[92]Delete
        Replies
