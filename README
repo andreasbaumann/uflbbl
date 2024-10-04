@@ -474,5 +474,3 @@ references
   - Linux 1.x old boot floppy code
 - alternative implementations of a real mode boot loader
   - http://dc0d32.blogspot.com/2010/06/real-mode-in-c-with-gcc-writing.html
-- other bootloader projects
-  - Smart Boot Manager: https://sourceforge.net/projects/btmgr/
