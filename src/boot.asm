@@ -1206,9 +1206,9 @@ strcmp:
 .loop:
 	a32 mov dl, [esi]
 	a32 mov dh, [edi]
-	cmp dh, $0
+	cmp dh, 0
 	je .done
-	cmp dl, $0
+	cmp dl, 0
 	je .done
 	cmp dh, dl
 	jne .done
@@ -1232,9 +1232,9 @@ strncmp:
 .loop:
 	a32 mov dl, [esi]
 	a32 mov dh, [edi]
-	cmp dh, $0
+	cmp dh, 0
 	je .done
-	cmp dl, $0
+	cmp dl, 0
 	je .done
 	cmp dh, dl
 	jne .done
